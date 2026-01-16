@@ -1,0 +1,48 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { fetchFeaturedProducts, handleApiError } from "@/lib/api";
+import { Product } from "@/lib/types";
+import ProductGrid from "../product/product-grid";
+import SectionHeading from "../ui/section-heading";
+
+export default function FeaturedProducts() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchFeaturedProducts();
+        setProducts(data || []);
+      } catch (err) {
+        setError(handleApiError(err));
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">
+      <SectionHeading
+        eyebrow="Featured"
+        title="Flagship drops"
+        description="Live inventory straight from your API—no placeholders."
+      />
+      <div className="mt-10">
+        {error ? (
+          <div className="rounded-3xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            {error}
+          </div>
+        ) : (
+          <ProductGrid products={products} loading={loading} />
+        )}
+      </div>
+    </section>
+  );
+}
