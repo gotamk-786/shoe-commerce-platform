@@ -5,16 +5,17 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCompare, removeFromCompare } from "@/store/slices/compare-slice";
 import { formatCurrency } from "@/lib/format";
 import Button from "@/components/ui/button";
+import { Product } from "@/lib/types";
 
-const buildColors = (product: any) =>
-  product.variants?.map((v: any) => v.color).filter(Boolean).join(", ") || "—";
+const buildColors = (product: Product) =>
+  product.variants?.map((variant) => variant.color).filter(Boolean).join(", ") || "-";
 
-const buildSizes = (product: any) => {
+const buildSizes = (product: Product) => {
   const sizes = new Set<string>();
-  product.variants?.forEach((variant: any) => {
-    variant.sizes?.forEach((s: any) => {
-      if (s.sizeUS) sizes.add(`US ${s.sizeUS}`);
-      if (s.sizeEU) sizes.add(`EU ${s.sizeEU}`);
+  product.variants?.forEach((variant) => {
+    variant.sizes?.forEach((size) => {
+      if (size.sizeUS) sizes.add(`US ${size.sizeUS}`);
+      if (size.sizeEU) sizes.add(`EU ${size.sizeEU}`);
     });
   });
   return sizes.size ? Array.from(sizes).join(", ") : "—";

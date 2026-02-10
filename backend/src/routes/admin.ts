@@ -2,10 +2,11 @@ import { Router } from "express";
 import { z } from "zod";
 import prisma from "../prisma";
 import { requireAdmin } from "../middleware/auth";
+import { requireUser } from "../middleware/jwt-auth";
 
 const router = Router();
 
-router.use(requireAdmin);
+router.use(requireUser, requireAdmin);
 
 router.get("/customers", async (_req, res, next) => {
   try {

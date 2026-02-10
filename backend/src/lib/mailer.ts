@@ -15,6 +15,8 @@ const transporter = host && port && user && pass
     })
   : null;
 
+export const mailerReady = Boolean(transporter && from);
+
 export const sendMail = async (to: string[], subject: string, html: string) => {
   if (!transporter || !from) return;
   await transporter.sendMail({

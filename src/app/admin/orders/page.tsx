@@ -18,10 +18,9 @@ const statusOptions: AdminOrder["status"][] = [
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
-  const [status, setStatus] = useState({ loading: false, error: "" });
+  const [status, setStatus] = useState({ loading: true, error: "" });
 
   useEffect(() => {
-    setStatus({ loading: true, error: "" });
     adminFetchOrders()
       .then((data) => {
         setOrders(data);

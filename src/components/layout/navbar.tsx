@@ -20,16 +20,14 @@ export default function Navbar() {
   const forceAdmin = process.env.NEXT_PUBLIC_FORCE_ADMIN === "true";
   const isAdmin = (user && user.role === "admin") || forceAdmin;
   const [wishlistCount, setWishlistCount] = useState(0);
+  const wishlistDisplay = token ? wishlistCount : 0;
   const total = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [cartItems],
   );
 
   useEffect(() => {
-    if (!token) {
-      setWishlistCount(0);
-      return;
-    }
+    if (!token) return;
     fetchWishlist()
       .then((items) => setWishlistCount(items.length))
       .catch(() => setWishlistCount(0));
@@ -40,7 +38,7 @@ export default function Navbar() {
     { href: "/collection", label: "Collection" },
     { href: "/wishlist", label: "Wishlist" },
     { href: "/account", label: "Account" },
-    { href: "/admin", label: "Admin Panel" },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin Panel" }] : []),
   ];
 
   return (
@@ -93,7 +91,7 @@ export default function Navbar() {
                   </span>
                   <span className="hidden sm:inline">Wishlist</span>
                   <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
-                    {wishlistCount}
+                    {wishlistDisplay}
                   </span>
                 </span>
               </Button>

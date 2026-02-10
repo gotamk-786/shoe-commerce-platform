@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Provider } from "react-redux";
 import { AppStore, makeStore } from "@/store";
 import { loadState, saveState } from "@/store/persist";
@@ -9,42 +9,30 @@ import { hydrateUser } from "@/store/slices/user-slice";
 import { adminLogin } from "@/store/slices/admin-slice";
 
 export default function Providers({ children }: { children: ReactNode }) {
-  const storeRef = useRef<AppStore>();
-  const [ready, setReady] = useState(false);
-
-  if (!storeRef.current) {
-    storeRef.current = makeStore();
-  }
+  const [store] = useState<AppStore>(() => makeStore());
 
   useEffect(() => {
     const preloaded = loadState();
     if (preloaded?.cart) {
-      storeRef.current?.dispatch(hydrateCart(preloaded.cart));
+      store.dispatch(hydrateCart(preloaded.cart));
     }
     if (preloaded?.user) {
-      storeRef.current?.dispatch(hydrateUser(preloaded.user));
+      store.dispatch(hydrateUser(preloaded.user));
     }
     if (preloaded?.admin?.authenticated) {
-      storeRef.current?.dispatch(
+      store.dispatch(
         adminLogin({ name: preloaded.admin.name || "Admin" }),
       );
     }
 
-    const unsubscribe = storeRef.current?.subscribe(() => {
-      if (!storeRef.current) return;
-      saveState(storeRef.current.getState());
+    const unsubscribe = store.subscribe(() => {
+      saveState(store.getState());
     });
 
-    setReady(true);
-
     return () => {
-      unsubscribe?.();
+      unsubscribe();
     };
-  }, []);
+  }, [store]);
 
-  if (!ready || !storeRef.current) {
-    return null;
-  }
-
-  return <Provider store={storeRef.current}>{children}</Provider>;
+  return <Provider store={store}>{children}</Provider>;
 }

@@ -11,12 +11,11 @@ import { useAppSelector } from "@/store/hooks";
 export default function WishlistPage() {
   const token = useAppSelector((state) => state.user.token);
   const [products, setProducts] = useState<Product[]>([]);
-  const [status, setStatus] = useState({ loading: false, error: "" });
+  const [status, setStatus] = useState({ loading: true, error: "" });
   const [shareLink, setShareLink] = useState("");
 
   useEffect(() => {
     if (!token) return;
-    setStatus({ loading: true, error: "" });
     fetchWishlist()
       .then((items) => {
         setProducts(items.map((item: { product: Product }) => item.product));

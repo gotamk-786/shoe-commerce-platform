@@ -3,6 +3,18 @@ import prisma from "../prisma";
 
 const router = Router();
 
+const normalizeImages = (images: unknown): { url: string; alt?: string }[] => {
+  if (!images) return [];
+  if (Array.isArray(images)) {
+    if (images.length === 0) return [];
+    if (typeof images[0] === "string") {
+      return (images as string[]).filter(Boolean).map((url) => ({ url }));
+    }
+    return images as { url: string; alt?: string }[];
+  }
+  return [];
+};
+
 router.get("/", async (req, res, next) => {
   try {
     const featured = req.query.featured === "true";
@@ -105,6 +117,8 @@ router.get("/", async (req, res, next) => {
     res.json({
       data: products.map((product) => {
         const firstVariant = product.variants[0];
+        const variantImages = normalizeImages(firstVariant?.images);
+        const productImages = normalizeImages(product.images);
         return {
           id: product.id,
           slug: product.slug,
@@ -117,8 +131,7 @@ router.get("/", async (req, res, next) => {
           stock: product.stock,
           active: product.active,
           featured: product.featured,
-          images: (firstVariant?.images as { url: string; alt?: string }[]) ??
-            (product.images ?? []),
+          images: variantImages.length ? variantImages : productImages,
           sizes: (product.sizes as string[]) ?? undefined,
           tags: (product.tags as string[]) ?? undefined,
           metadata:
@@ -183,6 +196,9 @@ router.get("/:slug", async (req, res, next) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const variantImages = normalizeImages(product.variants[0]?.images);
+    const productImages = normalizeImages(product.images);
+
     return res.json({
       id: product.id,
       slug: product.slug,
@@ -195,9 +211,7 @@ router.get("/:slug", async (req, res, next) => {
       stock: product.stock,
       active: product.active,
       featured: product.featured,
-      images:
-        (product.variants[0]?.images as { url: string; alt?: string }[]) ??
-        (product.images ?? []),
+      images: variantImages.length ? variantImages : productImages,
       sizes: (product.sizes as string[]) ?? undefined,
       tags: (product.tags as string[]) ?? undefined,
       metadata:

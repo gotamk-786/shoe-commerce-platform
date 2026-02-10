@@ -36,21 +36,28 @@ export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [status, setStatus] = useState({ loading: false, error: "" });
+  const [status, setStatus] = useState({ loading: true, error: "" });
 
-  const loadCoupons = async () => {
-    try {
-      setStatus({ loading: true, error: "" });
-      const data = await adminFetchCoupons();
-      setCoupons(data);
-      setStatus({ loading: false, error: "" });
-    } catch (error) {
-      setStatus({ loading: false, error: handleApiError(error) });
-    }
+  const refreshCoupons = async () => {
+    const data = await adminFetchCoupons();
+    setCoupons(data);
   };
 
   useEffect(() => {
-    loadCoupons();
+    let active = true;
+    adminFetchCoupons()
+      .then((data) => {
+        if (!active) return;
+        setCoupons(data);
+        setStatus({ loading: false, error: "" });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setStatus({ loading: false, error: handleApiError(error) });
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleSubmit = async () => {
@@ -86,7 +93,8 @@ export default function AdminCouponsPage() {
       }
       setForm(emptyForm);
       setEditingId(null);
-      await loadCoupons();
+      await refreshCoupons();
+      setStatus({ loading: false, error: "" });
     } catch (error) {
       setStatus({ loading: false, error: handleApiError(error) });
     }
@@ -126,8 +134,8 @@ export default function AdminCouponsPage() {
                     setForm((prev) => ({ ...prev, type: e.target.value as FormState["type"] }))
                   }
                 >
-                  <option value="percent">Percent</option>
-                  <option value="flat">Flat</option>
+                  <option value="percent" className="text-gray-900">Percent</option>
+                  <option value="flat" className="text-gray-900">Flat</option>
                 </select>
               </label>
               <Input

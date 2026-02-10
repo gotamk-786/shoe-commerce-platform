@@ -11,10 +11,9 @@ const STATUS_OPTIONS = ["requested", "reviewing", "approved", "rejected"] as con
 
 export default function AdminReturnsPage() {
   const [items, setItems] = useState<AdminReturn[]>([]);
-  const [status, setStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
+  const [status, setStatus] = useState<{ loading: boolean; error?: string }>({ loading: true });
 
   useEffect(() => {
-    setStatus({ loading: true });
     adminFetchReturns()
       .then((data) => {
         setItems(data);

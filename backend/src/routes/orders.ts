@@ -256,6 +256,10 @@ router.post("/", requireUser, async (req, res, next) => {
     const allowCod = settingMap.get("allowCod") !== "false";
     const allowDummy = settingMap.get("allowDummy") !== "false";
 
+    if (paymentRequired && !payload.paymentMethod) {
+      return res.status(400).json({ message: "Payment method is required." });
+    }
+
     if (payload.paymentMethod === "cod" && !allowCod) {
       return res.status(400).json({ message: "COD is disabled. Please use a payment method." });
     }

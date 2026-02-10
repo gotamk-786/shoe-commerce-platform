@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
           <p className="pill mb-2 inline-block">Reset</p>
           <h1 className="text-2xl font-semibold text-gray-900">Forgot password</h1>
           <p className="mt-2 text-sm text-gray-600">
-            We'll send a secure reset link through the API endpoint provided by your
+            We will send a secure reset link through the API endpoint provided by your
             backend.
           </p>
         </div>

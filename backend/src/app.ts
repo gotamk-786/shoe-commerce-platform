@@ -69,6 +69,7 @@ app.use("/settings", settingsRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
+  void _next;
   res.status(500).json({ message: "Internal server error" });
 });
 

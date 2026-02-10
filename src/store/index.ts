@@ -1,4 +1,5 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { combineReducers, configureStore } from "@reduxjs/toolkit";
+import type { PreloadedState } from "@reduxjs/toolkit";
 import cartReducer from "./slices/cart-slice";
 import userReducer from "./slices/user-slice";
 import uiReducer from "./slices/ui-slice";
@@ -13,12 +14,15 @@ const reducer = {
   compare: compareReducer,
 };
 
-export const makeStore = (preloadedState?: any) =>
+const rootReducer = combineReducers(reducer);
+
+export type RootState = ReturnType<typeof rootReducer>;
+
+export const makeStore = (preloadedState?: PreloadedState<RootState>) =>
   configureStore({
-    reducer,
+    reducer: rootReducer,
     preloadedState,
   });
 
 export type AppStore = ReturnType<typeof makeStore>;
-export type RootState = ReturnType<AppStore["getState"]>;
 export type AppDispatch = AppStore["dispatch"];

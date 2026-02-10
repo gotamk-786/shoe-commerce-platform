@@ -16,7 +16,11 @@ const isAdminFromClaims = (claims: Record<string, unknown> | null | undefined) =
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   const bypassToken = process.env.ADMIN_BYPASS_TOKEN;
-  if (bypassToken && req.header("x-admin-bypass") === bypassToken) {
+  if (process.env.NODE_ENV !== "production" && bypassToken && req.header("x-admin-bypass") === bypassToken) {
+    return next();
+  }
+
+  if (req.user?.role === "admin") {
     return next();
   }
 

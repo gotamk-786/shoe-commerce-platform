@@ -100,6 +100,29 @@ export const registerAccount = async (payload: {
   return data;
 };
 
+export const requestRegisterOtp = async (email: string): Promise<{ ok: boolean; expiresIn: number }> => {
+  const { data } = await apiClient.post("/auth/register/request-otp", { email });
+  return data;
+};
+
+export const verifyRegisterOtp = async (payload: {
+  name: string;
+  email: string;
+  password: string;
+  code: string;
+}): Promise<{ token: string; user: UserProfile }> => {
+  const { data } = await apiClient.post("/auth/register/verify-otp", payload);
+  return data;
+};
+
+export const buildGoogleAuthUrl = (redirect: string) => {
+  const base =
+    process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
+    "http://localhost:5000/api";
+  const params = new URLSearchParams({ redirect });
+  return `${base}/auth/google/start?${params.toString()}`;
+};
+
 export const requestPasswordReset = async (email: string): Promise<void> => {
   await apiClient.post("/auth/forgot-password", { email });
 };

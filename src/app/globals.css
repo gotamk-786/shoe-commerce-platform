@@ -68,6 +68,11 @@ a {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.admin-shell .pill {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
 
 .dark-pane {
   background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.06), transparent 45%),

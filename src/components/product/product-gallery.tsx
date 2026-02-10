@@ -1,17 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ProductImage } from "@/lib/types";
 
 export default function ProductGallery({ images }: { images: ProductImage[] }) {
   const [active, setActive] = useState(0);
-  const current = images[active];
-
-  useEffect(() => {
-    setActive(0);
-  }, [images]);
+  const safeActive = active < images.length ? active : 0;
+  const current = images[safeActive];
 
   return (
     <div className="grid gap-4 md:grid-cols-[72px_1fr]">
@@ -21,7 +18,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
             key={img.url + idx}
             onClick={() => setActive(idx)}
             className={`relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-2xl border bg-white ${
-              idx === active ? "border-black" : "border-black/10"
+              idx === safeActive ? "border-black" : "border-black/10"
             }`}
           >
             {img.url ? (

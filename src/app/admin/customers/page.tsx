@@ -9,10 +9,9 @@ import { AdminCustomer } from "@/lib/types";
 
 export default function AdminCustomersPage() {
   const [customers, setCustomers] = useState<AdminCustomer[]>([]);
-  const [status, setStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
+  const [status, setStatus] = useState<{ loading: boolean; error?: string }>({ loading: true });
 
   useEffect(() => {
-    setStatus({ loading: true });
     adminFetchCustomers()
       .then((data) => {
         setCustomers(data);

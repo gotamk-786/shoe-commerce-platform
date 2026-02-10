@@ -30,22 +30,28 @@ export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const token = useAppSelector((state) => state.user.token);
   const [order, setOrder] = useState<Order | null>(null);
-  const [status, setStatus] = useState({ loading: true, error: "" });
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!token) {
-      setStatus({ loading: false, error: "" });
-      return;
-    }
+    if (!token) return;
+    let active = true;
     fetchOrderById(params.id)
       .then((data) => {
+        if (!active) return;
         setOrder(data);
-        setStatus({ loading: false, error: "" });
+        setError("");
       })
-      .catch((error) => {
-        setStatus({ loading: false, error: handleApiError(error) });
+      .catch((err) => {
+        if (!active) return;
+        setError(handleApiError(err));
       });
+    return () => {
+      active = false;
+    };
   }, [params.id, token]);
+
+  const isOrderReady = order?.id === params.id;
+  const loading = Boolean(token) && !isOrderReady && !error;
 
   const activeIndex = useMemo(
     () => (order ? statusSteps.indexOf(order.status) : -1),
@@ -71,7 +77,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (status.loading) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-12 space-y-4">
         <Skeleton className="h-28" />
@@ -80,12 +86,12 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (!order || status.error) {
+  if (!isOrderReady || error) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-20 text-center">
         <p className="text-lg font-semibold text-gray-900">Order unavailable</p>
         <p className="mt-2 text-sm text-gray-600">
-          {status.error || "We could not fetch this order."}
+          {error || "We could not fetch this order."}
         </p>
       </div>
     );

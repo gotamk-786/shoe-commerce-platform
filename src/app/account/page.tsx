@@ -219,7 +219,7 @@ export default function AccountPage() {
   if (!token) {
     return (
       <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-        <p className="text-lg font-semibold text-gray-900">You're signed out</p>
+        <p className="text-lg font-semibold text-gray-900">You are signed out</p>
         <p className="mt-2 text-sm text-gray-600">
           Log in to see your profile, orders, and saved pairs.
         </p>

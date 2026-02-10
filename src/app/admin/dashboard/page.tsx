@@ -25,7 +25,7 @@ const formatPeriodLabel = (period: string) => {
 export default function AdminDashboardPage() {
   const [profitItems, setProfitItems] = useState<ProfitOrderItem[]>([]);
   const [profitSummary, setProfitSummary] = useState<ProfitSummaryBucket[]>([]);
-  const [profitStatus, setProfitStatus] = useState({ loading: false, error: "" });
+  const [profitStatus, setProfitStatus] = useState({ loading: true, error: "" });
   const [orderStats, setOrderStats] = useState({
     totalOrders: 0,
     totalRevenue: 0,
@@ -45,11 +45,10 @@ export default function AdminDashboardPage() {
     }[];
     products: { id: string; stock: number; name: string }[];
   }>({ variantSizes: [], products: [] });
-  const [lowStockStatus, setLowStockStatus] = useState({ loading: false, error: "" });
+  const [lowStockStatus, setLowStockStatus] = useState({ loading: true, error: "" });
 
   useEffect(() => {
     let active = true;
-    setProfitStatus({ loading: true, error: "" });
     Promise.all([
       adminFetchProfitOrders(),
       adminFetchProfitSummary({ period: "daily" }),
@@ -81,7 +80,6 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let active = true;
-    setLowStockStatus({ loading: true, error: "" });
     adminFetchLowStock()
       .then((data) => {
         if (!active) return;

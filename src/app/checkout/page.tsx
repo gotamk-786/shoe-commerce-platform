@@ -86,7 +86,9 @@ export default function CheckoutPage() {
         {["Shipping", "Payment", "Review"].map((label, idx) => (
           <div
             key={label}
-            className={`pill ${idx === step ? "bg-black text-white" : "text-gray-700"}`}
+            className={`pill ${
+              idx === step ? "!bg-black !text-white !border-black" : "!bg-white !text-gray-800"
+            }`}
           >
             {idx + 1}. {label}
           </div>

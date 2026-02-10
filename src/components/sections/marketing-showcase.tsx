@@ -101,6 +101,9 @@ export default function MarketingShowcase() {
   const [paused, setPaused] = useState(false);
 
   const slides = settings.hero.slides;
+  const hasSlides = slides.length > 0;
+  const safeIndex = hasSlides ? Math.min(activeIndex, slides.length - 1) : 0;
+  const activeSlide = hasSlides ? slides[safeIndex] : fallbackSettings.hero.slides[0];
   const lookbook = [
     {
       id: "look-1",
@@ -132,11 +135,6 @@ export default function MarketingShowcase() {
   }, []);
 
   useEffect(() => {
-    if (!slides.length) return;
-    setActiveIndex((prev) => Math.min(prev, slides.length - 1));
-  }, [slides.length]);
-
-  useEffect(() => {
     if (paused || slides.length <= 1) return;
     const timer = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % slides.length);
@@ -144,7 +142,7 @@ export default function MarketingShowcase() {
     return () => clearInterval(timer);
   }, [paused, slides.length, settings.hero.autoplayMs]);
 
-  const activeSlide = useMemo(() => slides[activeIndex], [slides, activeIndex]);
+  const activeSlideMemo = useMemo(() => activeSlide, [activeSlide]);
   const thumbSlides = useMemo(() => slides.slice(0, 3), [slides]);
 
   return (
@@ -182,10 +180,10 @@ export default function MarketingShowcase() {
         onMouseLeave={() => setPaused(false)}
       >
         <div className="absolute inset-0">
-          {activeSlide.mediaType === "video" ? (
+          {activeSlideMemo.mediaType === "video" ? (
             <video
-              key={activeSlide.mediaUrl}
-              src={activeSlide.mediaUrl}
+              key={activeSlideMemo.mediaUrl}
+              src={activeSlideMemo.mediaUrl}
               className="h-full w-full object-cover"
               muted
               playsInline
@@ -194,9 +192,9 @@ export default function MarketingShowcase() {
             />
           ) : (
             <img
-              key={activeSlide.mediaUrl}
-              src={activeSlide.mediaUrl}
-              alt={activeSlide.title}
+              key={activeSlideMemo.mediaUrl}
+              src={activeSlideMemo.mediaUrl}
+              alt={activeSlideMemo.title}
               className="h-full w-full object-cover"
             />
           )}
@@ -205,21 +203,23 @@ export default function MarketingShowcase() {
         </div>
 
         <div className="relative z-10 flex flex-col gap-6 px-8 py-16 md:px-14 md:py-20 lg:max-w-[70%]">
-          {activeSlide.badge && (
+          {activeSlideMemo.badge && (
             <span className="w-fit rounded-full border border-white/30 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
-              {activeSlide.badge}
+              {activeSlideMemo.badge}
             </span>
           )}
           <h1 className="text-balance text-4xl font-semibold tracking-[-0.04em] md:text-6xl">
-            {activeSlide.title}
+            {activeSlideMemo.title}
           </h1>
-          {activeSlide.subtitle && (
-            <p className="max-w-xl text-base text-white/80 md:text-lg">{activeSlide.subtitle}</p>
+          {activeSlideMemo.subtitle && (
+            <p className="max-w-xl text-base text-white/80 md:text-lg">
+              {activeSlideMemo.subtitle}
+            </p>
           )}
           <div className="flex flex-wrap gap-3">
-            {activeSlide.ctaLabel && activeSlide.ctaHref && (
-              <Link href={activeSlide.ctaHref}>
-                <Button variant="primary">{activeSlide.ctaLabel}</Button>
+            {activeSlideMemo.ctaLabel && activeSlideMemo.ctaHref && (
+              <Link href={activeSlideMemo.ctaHref}>
+                <Button variant="primary">{activeSlideMemo.ctaLabel}</Button>
               </Link>
             )}
             <Link href="/collection">
@@ -230,14 +230,22 @@ export default function MarketingShowcase() {
 
         <div className="absolute bottom-6 right-6 flex items-center gap-2">
           <button
+            disabled={!hasSlides}
             className="rounded-full border border-white/30 bg-black/40 px-3 py-2 text-sm text-white transition hover:bg-black/60"
-            onClick={() => setActiveIndex((prev) => (prev - 1 + slides.length) % slides.length)}
+            onClick={() => {
+              if (!hasSlides) return;
+              setActiveIndex((prev) => (prev - 1 + slides.length) % slides.length);
+            }}
           >
             Prev
           </button>
           <button
+            disabled={!hasSlides}
             className="rounded-full border border-white/30 bg-white/90 px-3 py-2 text-sm text-black transition hover:bg-white"
-            onClick={() => setActiveIndex((prev) => (prev + 1) % slides.length)}
+            onClick={() => {
+              if (!hasSlides) return;
+              setActiveIndex((prev) => (prev + 1) % slides.length);
+            }}
           >
             Next
           </button>
@@ -248,7 +256,7 @@ export default function MarketingShowcase() {
             <button
               key={slide.id}
               className={`h-1.5 rounded-full transition ${
-                index === activeIndex ? "w-10 bg-white" : "w-5 bg-white/50"
+                index === safeIndex ? "w-10 bg-white" : "w-5 bg-white/50"
               }`}
               onClick={() => setActiveIndex(index)}
             />
@@ -264,7 +272,7 @@ export default function MarketingShowcase() {
                 key={slide.id}
                 onClick={() => setActiveIndex(index)}
                 className={`group relative overflow-hidden rounded-3xl border ${
-                  index === activeIndex ? "border-black/40" : "border-black/10"
+                  index === safeIndex ? "border-black/40" : "border-black/10"
                 } bg-white shadow-[0_20px_50px_rgba(15,23,42,0.12)] transition`}
               >
                 {slide.mediaType === "video" ? (

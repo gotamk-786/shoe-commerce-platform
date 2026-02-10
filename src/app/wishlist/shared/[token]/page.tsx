@@ -10,11 +10,10 @@ import { Product } from "@/lib/types";
 export default function SharedWishlistPage() {
   const params = useParams<{ token: string }>();
   const [products, setProducts] = useState<Product[]>([]);
-  const [status, setStatus] = useState({ loading: false, error: "" });
+  const [status, setStatus] = useState({ loading: true, error: "" });
 
   useEffect(() => {
     if (!params.token) return;
-    setStatus({ loading: true, error: "" });
     fetchSharedWishlist(params.token)
       .then((items) => {
         setProducts(items.map((item: { product: Product }) => item.product));

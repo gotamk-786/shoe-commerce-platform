@@ -10,7 +10,7 @@ export const loadState = (): Partial<RootState> | undefined => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return undefined;
     return JSON.parse(raw);
-  } catch (_error) {
+  } catch {
     return undefined;
   }
 };
@@ -25,7 +25,7 @@ export const saveState = (state: RootState) => {
       compare: state.compare,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-  } catch (_error) {
+  } catch {
     // ignore
   }
 };

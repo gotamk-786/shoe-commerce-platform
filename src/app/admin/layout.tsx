@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <AdminGuard>
-      <div className="flex min-h-screen bg-[#0b1224] text-white">
+      <div className="admin-shell flex min-h-screen bg-[#0b1224] text-white">
         <AdminSidebar />
         <div className="flex flex-1 flex-col">
           <AdminTopbar />
