@@ -228,7 +228,7 @@ export default function AdminCouponsPage() {
                   variant="ghost"
                   onClick={async () => {
                     await adminDeleteCoupon(coupon.id);
-                    await loadCoupons();
+                    await refreshCoupons();
                   }}
                 >
                   Delete
