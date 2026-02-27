@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import prisma from "../prisma";
 
@@ -31,7 +32,7 @@ router.get("/", async (req, res, next) => {
     const sort = req.query.sort ? String(req.query.sort) : undefined;
     const q = req.query.q ? String(req.query.q).trim() : undefined;
 
-    const where: Record<string, unknown> = { active: true };
+    const where: Prisma.ProductWhereInput = { active: true };
     if (featured) where.featured = true;
     if (condition) where.condition = condition;
     if (gender) where.gender = gender;
@@ -68,12 +69,9 @@ router.get("/", async (req, res, next) => {
       ];
     }
 
-    const orderBy =
-      sort === "price_asc"
-        ? { sellPrice: "asc" }
-        : sort === "price_desc"
-          ? { sellPrice: "desc" }
-          : { createdAt: "desc" };
+    let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: "desc" };
+    if (sort === "price_asc") orderBy = { sellPrice: "asc" };
+    if (sort === "price_desc") orderBy = { sellPrice: "desc" };
 
     const [total, products] = await Promise.all([
       prisma.product.count({ where }),
