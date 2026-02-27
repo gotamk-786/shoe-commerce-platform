@@ -1,10 +1,10 @@
 "use client";
 
-import { ButtonHTMLAttributes, ReactNode } from "react";
-import { motion } from "framer-motion";
+import { ReactNode } from "react";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonProps = HTMLMotionProps<"button"> & {
   variant?: "primary" | "ghost" | "soft";
   icon?: ReactNode;
   full?: boolean;
