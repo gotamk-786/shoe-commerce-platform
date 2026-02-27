@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^16.1.1",
     "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.13.2",
     "caniuse-lite": "^1.0.30001762",
