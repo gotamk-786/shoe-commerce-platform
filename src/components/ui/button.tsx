@@ -5,6 +5,7 @@ import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 type ButtonProps = HTMLMotionProps<"button"> & {
+  children?: ReactNode;
   variant?: "primary" | "ghost" | "soft";
   icon?: ReactNode;
   full?: boolean;
