@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppDispatch } from "@/store/hooks";
 import { setCredentials } from "@/store/slices/user-slice";
 import { fetchProfile, handleApiError } from "@/lib/api";
 
-export default function GoogleCallbackPage() {
+function GoogleCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const dispatch = useAppDispatch();
@@ -38,5 +38,22 @@ export default function GoogleCallbackPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
     </div>
+  );
+}
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-md px-6 py-16 text-center">
+          <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-8 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+            <p className="text-sm uppercase tracking-[0.2em] text-gray-500">Google Login</p>
+            <h1 className="text-xl font-semibold text-gray-900">Signing you in...</h1>
+          </div>
+        </div>
+      }
+    >
+      <GoogleCallbackContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ProductGrid from "@/components/product/product-grid";
 import FilterBar, { ProductFilters } from "@/components/product/filter-bar";
@@ -9,7 +9,7 @@ import Button from "@/components/ui/button";
 import { Category, Product } from "@/lib/types";
 import { fetchCategories, fetchProducts, handleApiError } from "@/lib/api";
 
-export default function CollectionPage() {
+function CollectionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -140,5 +140,23 @@ export default function CollectionPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CollectionPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-6xl px-6 py-12">
+          <SectionHeading
+            eyebrow="Collection"
+            title="Live inventory"
+            description="Loading products..."
+          />
+        </div>
+      }
+    >
+      <CollectionContent />
+    </Suspense>
   );
 }
