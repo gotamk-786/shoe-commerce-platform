@@ -19,9 +19,11 @@ import {
   AdminCustomer,
 } from "./types";
 
+const DEFAULT_API_BASE = "https://shoe-commerce-platform.onrender.com";
+
 const baseURL =
   process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-  "http://localhost:5000/api";
+  DEFAULT_API_BASE;
 
 export const apiClient = axios.create({
   baseURL,
@@ -118,7 +120,7 @@ export const verifyRegisterOtp = async (payload: {
 export const buildGoogleAuthUrl = (redirect: string) => {
   const base =
     process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-    "http://localhost:5000/api";
+    DEFAULT_API_BASE;
   const params = new URLSearchParams({ redirect });
   return `${base}/auth/google/start?${params.toString()}`;
 };
