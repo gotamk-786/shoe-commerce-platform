@@ -1,5 +1,4 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
-import type { PreloadedState } from "@reduxjs/toolkit";
 import cartReducer from "./slices/cart-slice";
 import userReducer from "./slices/user-slice";
 import uiReducer from "./slices/ui-slice";
@@ -18,7 +17,7 @@ const rootReducer = combineReducers(reducer);
 
 export type RootState = ReturnType<typeof rootReducer>;
 
-export const makeStore = (preloadedState?: PreloadedState<RootState>) =>
+export const makeStore = (preloadedState?: Partial<RootState>) =>
   configureStore({
     reducer: rootReducer,
     preloadedState,
