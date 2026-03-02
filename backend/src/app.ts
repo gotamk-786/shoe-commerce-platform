@@ -33,9 +33,13 @@ const allowedOrigins = (process.env.CORS_ORIGIN?.split(",") ?? ["http://localhos
 const isAllowedOrigin = (origin: string) => {
   if (allowedOrigins.includes(origin)) return true;
   try {
-    const { hostname } = new URL(origin);
+    const { hostname, protocol } = new URL(origin);
     // Allow Vercel preview/production domains without editing env on every deploy URL.
-    return hostname.endsWith(".vercel.app");
+    if (hostname.endsWith(".vercel.app")) return true;
+    // Allow local dev.
+    if (origin.startsWith("http://localhost")) return true;
+    // Allow custom HTTPS frontend domains by default.
+    return protocol === "https:";
   } catch {
     return false;
   }
