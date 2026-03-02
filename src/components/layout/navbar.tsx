@@ -17,8 +17,7 @@ export default function Navbar() {
   const compareCount = useAppSelector((state) => state.compare.items.length);
   const user = useAppSelector((state) => state.user.profile);
   const token = useAppSelector((state) => state.user.token);
-  const forceAdmin = process.env.NEXT_PUBLIC_FORCE_ADMIN === "true";
-  const isAdmin = (user && user.role === "admin") || forceAdmin;
+  const isAdmin = user?.role === "admin";
   const [wishlistCount, setWishlistCount] = useState(0);
   const wishlistDisplay = token ? wishlistCount : 0;
   const total = useMemo(

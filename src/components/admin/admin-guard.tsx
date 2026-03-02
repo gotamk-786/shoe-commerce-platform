@@ -7,17 +7,16 @@ import { useAppSelector } from "@/store/hooks";
 export default function AdminGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const admin = useAppSelector((state) => state.admin);
-  const forceAdmin = process.env.NEXT_PUBLIC_FORCE_ADMIN === "true";
-  const isLoggedIn = admin.authenticated || forceAdmin;
+  const user = useAppSelector((state) => state.user.profile);
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    if (!isLoggedIn && pathname !== "/admin/login") {
+    if (!isAdmin && pathname !== "/admin/login") {
       router.replace("/admin/login");
     }
-  }, [isLoggedIn, pathname, router]);
+  }, [isAdmin, pathname, router]);
 
-  if (!isLoggedIn && pathname !== "/admin/login") {
+  if (!isAdmin && pathname !== "/admin/login") {
     return null;
   }
 
