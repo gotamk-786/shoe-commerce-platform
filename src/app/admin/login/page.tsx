@@ -6,24 +6,34 @@ import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { useAppDispatch } from "@/store/hooks";
 import { adminLogin } from "@/store/slices/admin-slice";
-
-const ADMIN_USER = process.env.NEXT_PUBLIC_ADMIN_USER || "admin@thrifty.com";
-const ADMIN_PASS = process.env.NEXT_PUBLIC_ADMIN_PASS || "admin123";
+import { authenticate, handleApiError } from "@/lib/api";
+import { setCredentials } from "@/store/slices/user-slice";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const dispatch = useAppDispatch();
   const router = useRouter();
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (email === ADMIN_USER && password === ADMIN_PASS) {
-      dispatch(adminLogin({ name: email }));
+    setError(null);
+    setLoading(true);
+    try {
+      const payload = await authenticate({ email: email.trim().toLowerCase(), password });
+      if (payload.user.role !== "admin") {
+        setError("This account does not have admin access.");
+        return;
+      }
+      dispatch(setCredentials(payload));
+      dispatch(adminLogin({ name: payload.user.name || payload.user.email }));
       router.push("/admin/dashboard");
-    } else {
-      setError("Invalid admin credentials");
+    } catch (err) {
+      setError(handleApiError(err) || "Invalid admin credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -33,7 +43,7 @@ export default function AdminLoginPage() {
         <p className="pill mb-3 inline-block text-gray-700">Admin Panel</p>
         <h1 className="text-2xl font-semibold text-gray-900">Admin login</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Use the preconfigured credentials to enter the admin dashboard.
+          Sign in with your admin account to enter the dashboard.
         </p>
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <Input
@@ -55,13 +65,10 @@ export default function AdminLoginPage() {
               {error}
             </div>
           )}
-          <Button type="submit" variant="primary" full>
-            Log in
+          <Button type="submit" variant="primary" full disabled={loading}>
+            {loading ? "Logging in..." : "Log in"}
           </Button>
         </form>
-        <div className="mt-4 text-xs text-gray-500">
-          Default: {ADMIN_USER} / {ADMIN_PASS}
-        </div>
       </div>
     </div>
   );
