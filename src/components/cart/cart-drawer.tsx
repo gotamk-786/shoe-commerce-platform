@@ -62,8 +62,7 @@ export default function CartDrawer() {
                   <div className="glass flex flex-col items-center justify-center rounded-2xl px-4 py-10 text-center text-gray-600">
                     <p className="text-lg font-semibold text-gray-900">Cart is empty</p>
                     <p className="mt-2 max-w-sm text-sm">
-                      Pick your next pair from the collection. Everything updates live
-                      from the API—no placeholders here.
+                      Start exploring the collection and add your favorite pair to get going.
                     </p>
                     <Button
                       variant="primary"
@@ -186,3 +185,4 @@ export default function CartDrawer() {
     </AnimatePresence>
   );
 }
+

@@ -163,7 +163,7 @@ export default function ProductInfo({
                 </motion.button>
               ))
             ) : (
-              <p className="text-sm text-gray-500">Sizing will load from the API.</p>
+              <p className="text-sm text-gray-500">Sizing details will be available soon.</p>
             )}
           </div>
         </div>

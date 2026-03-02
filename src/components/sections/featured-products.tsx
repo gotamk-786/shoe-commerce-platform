@@ -32,7 +32,7 @@ export default function FeaturedProducts() {
       <SectionHeading
         eyebrow="Featured"
         title="Flagship drops"
-        description="Live inventory straight from your API—no placeholders."
+        description="Handpicked favorites, refreshed regularly."
       />
       <div className="mt-10">
         {error ? (
@@ -46,3 +46,4 @@ export default function FeaturedProducts() {
     </section>
   );
 }
+

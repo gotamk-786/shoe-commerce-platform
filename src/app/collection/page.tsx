@@ -95,8 +95,8 @@ function CollectionContent() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <SectionHeading
         eyebrow="Collection"
-        title="Live inventory"
-        description="All products flow from the API with filters, sorting, and paginated browsing."
+        title="Shop the collection"
+        description="Browse every pair with smart filters and clean, easy navigation."
       />
       <div className="mt-6">
         <FilterBar categories={categories} onChange={onFilterChange} loading={loading} />
@@ -150,8 +150,8 @@ export default function CollectionPage() {
         <div className="mx-auto max-w-6xl px-6 py-12">
           <SectionHeading
             eyebrow="Collection"
-            title="Live inventory"
-            description="Loading products..."
+            title="Shop the collection"
+            description="Loading styles..."
           />
         </div>
       }

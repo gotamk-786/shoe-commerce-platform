@@ -56,7 +56,7 @@ export default function CategoryStories() {
       <SectionHeading
         eyebrow="Categories"
         title="Stories in every silhouette"
-        description="Explore each lane of the catalog. Tiles update the moment your API does."
+        description="Explore each lane of the catalog and find the right style for your day."
       />
       <div className="mt-10 grid gap-7 md:grid-cols-3">
         {loading &&
@@ -87,7 +87,7 @@ export default function CategoryStories() {
                 </div>
               ) : (
                 <div className="mt-6 rounded-2xl border border-dashed border-black/10 bg-gray-50 px-4 py-6 text-sm text-gray-500">
-                  Connect category imagery via the API to complete the story.
+                  Fresh visuals for this category are coming soon.
                 </div>
               )}
             </div>

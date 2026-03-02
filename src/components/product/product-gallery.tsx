@@ -50,7 +50,7 @@ export default function ProductGallery({ images }: { images: ProductImage[] }) {
           </motion.div>
         ) : (
           <div className="grid h-full place-items-center text-sm text-gray-500">
-            Awaiting product imagery from the API
+            Product images will appear here soon
           </div>
         )}
       </div>

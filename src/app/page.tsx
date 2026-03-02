@@ -15,12 +15,12 @@ export default function Home() {
               <p className="pill mb-2 inline-block text-gray-700">Promise</p>
               <h3 className="text-2xl font-semibold text-gray-900">Engineered for movement</h3>
               <p className="mt-2 max-w-xl text-sm text-gray-600">
-                Smooth interactions, live data, no clutter. Thrifty Shoes stays premium from landing to checkout.
+                Smooth interactions, clean browsing, no clutter. Thrifty Shoes stays premium from landing to checkout.
               </p>
             </div>
             <div className="flex flex-wrap gap-3 text-sm text-gray-700">
               <span className="pill">Smooth cart drawer</span>
-              <span className="pill">API-first content</span>
+              <span className="pill">Curated collections</span>
               <span className="pill">Responsive grid</span>
             </div>
           </div>
