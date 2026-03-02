@@ -21,9 +21,29 @@ import {
 
 const DEFAULT_API_BASE = "https://shoe-commerce-platform.onrender.com";
 
-const baseURL =
-  process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-  DEFAULT_API_BASE;
+const resolveApiBase = (rawBase?: string) => {
+  if (!rawBase) return DEFAULT_API_BASE;
+  const cleaned = rawBase.replace(/\/$/, "");
+  try {
+    const parsed = new URL(cleaned);
+    const isLocal =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    // Prevent accidental localhost usage in deployed browsers.
+    if (
+      typeof window !== "undefined" &&
+      isLocal &&
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      return DEFAULT_API_BASE;
+    }
+    return cleaned;
+  } catch {
+    return DEFAULT_API_BASE;
+  }
+};
+
+const baseURL = resolveApiBase(process.env.NEXT_PUBLIC_API_BASE);
 
 export const apiClient = axios.create({
   baseURL,
@@ -118,9 +138,7 @@ export const verifyRegisterOtp = async (payload: {
 };
 
 export const buildGoogleAuthUrl = (redirect: string) => {
-  const base =
-    process.env.NEXT_PUBLIC_API_BASE?.replace(/\/$/, "") ||
-    DEFAULT_API_BASE;
+  const base = resolveApiBase(process.env.NEXT_PUBLIC_API_BASE);
   const params = new URLSearchParams({ redirect });
   return `${base}/auth/google/start?${params.toString()}`;
 };
