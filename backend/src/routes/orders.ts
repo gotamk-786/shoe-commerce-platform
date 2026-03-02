@@ -37,6 +37,10 @@ router.get("/", requireUser, async (req, res, next) => {
           select: {
             id: true,
             productId: true,
+            variantId: true,
+            color: true,
+            sizeUS: true,
+            sizeEU: true,
             name: true,
             quantity: true,
             soldPrice: true,
@@ -194,6 +198,9 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
 router.post("/", requireUser, async (req, res, next) => {
   try {
     const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
     const payload = createOrderSchema.parse(req.body);
     const productIds = payload.items.map((item) => item.productId);
 
@@ -289,7 +296,7 @@ router.post("/", requireUser, async (req, res, next) => {
 
     const total = Math.max(subTotal - discountTotal, 0);
 
-    const order = await prisma.$transaction(async (tx) => {
+    const createdOrder = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           userId,
@@ -322,7 +329,7 @@ router.post("/", requireUser, async (req, res, next) => {
             }),
           },
         },
-        include: { items: true },
+        select: { id: true },
       });
 
       for (const item of payload.items) {
@@ -359,6 +366,29 @@ router.post("/", requireUser, async (req, res, next) => {
 
       return created;
     });
+
+    const order = await prisma.order.findUnique({
+      where: { id: createdOrder.id },
+      include: {
+        items: {
+          select: {
+            id: true,
+            productId: true,
+            variantId: true,
+            color: true,
+            sizeUS: true,
+            sizeEU: true,
+            name: true,
+            quantity: true,
+            soldPrice: true,
+            image: true,
+          },
+        },
+      },
+    });
+    if (!order) {
+      return res.status(500).json({ message: "Order creation failed." });
+    }
 
     const adminEmails = process.env.ADMIN_ALERT_EMAILS
       ? process.env.ADMIN_ALERT_EMAILS.split(",").map((e) => e.trim()).filter(Boolean)

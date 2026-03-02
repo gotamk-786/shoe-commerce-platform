@@ -15,6 +15,12 @@ const isAdminFromClaims = (claims: Record<string, unknown> | null | undefined) =
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  const authReq = req as Request & {
+    auth?: {
+      sessionClaims?: Record<string, unknown> | null;
+    };
+  };
+
   const bypassToken = process.env.ADMIN_BYPASS_TOKEN;
   if (process.env.NODE_ENV !== "production" && bypassToken && req.header("x-admin-bypass") === bypassToken) {
     return next();
@@ -24,11 +30,11 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
     return next();
   }
 
-  if (!req.auth) {
+  if (!authReq.auth) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  if (!isAdminFromClaims(req.auth.sessionClaims)) {
+  if (!isAdminFromClaims(authReq.auth.sessionClaims)) {
     return res.status(403).json({ message: "Forbidden" });
   }
 
