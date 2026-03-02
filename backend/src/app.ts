@@ -26,10 +26,31 @@ import twofactorRouter from "./routes/twofactor";
 
 const app = express();
 
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
-  credentials: true,
-}));
+const allowedOrigins = (process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"])
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const isAllowedOrigin = (origin: string) => {
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    // Allow Vercel preview/production domains without editing env on every deploy URL.
+    return hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+};
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Non-browser/server-side requests may not send Origin.
+      if (!origin) return callback(null, true);
+      return callback(null, isAllowedOrigin(origin));
+    },
+    credentials: true,
+  }),
+);
 
 // Webhooks need the raw body for signature validation.
 app.use("/webhooks", express.raw({ type: "application/json" }));
