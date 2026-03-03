@@ -291,7 +291,7 @@ router.post("/login", async (req, res, next) => {
 
     const user = await prisma.user.findUnique({ where: { email: payload.email } });
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials." });
+      return res.status(401).json({ message: "Incorrect email or password." });
     }
     if (user.isBlocked) {
       return res.status(403).json({ message: "Account blocked" });
@@ -299,7 +299,7 @@ router.post("/login", async (req, res, next) => {
 
     const ok = await verifyPassword(payload.password, user.passwordHash);
     if (!ok) {
-      return res.status(401).json({ message: "Invalid credentials." });
+      return res.status(401).json({ message: "Incorrect email or password." });
     }
 
     const token = signToken({

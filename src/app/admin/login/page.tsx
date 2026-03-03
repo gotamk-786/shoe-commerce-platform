@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
       dispatch(adminLogin({ name: payload.user.name || payload.user.email }));
       router.push("/admin/dashboard");
     } catch (err) {
-      setError(handleApiError(err) || "Invalid admin credentials");
+      setError(handleApiError(err) || "Incorrect email or password.");
     } finally {
       setLoading(false);
     }

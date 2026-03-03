@@ -71,12 +71,19 @@ apiClient.interceptors.request.use((config) => {
 
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
+    const rawMessage = (error.response?.data as { message?: string })?.message;
+    const normalizedMessage = rawMessage?.trim().toLowerCase();
+    if (
+      normalizedMessage === "invalid credentials." ||
+      normalizedMessage === "invalid credentials" ||
+      normalizedMessage === "invalid admin credentials." ||
+      normalizedMessage === "invalid admin credentials"
+    ) {
+      return "Incorrect email or password.";
+    }
+
     const fallback = "We hit a snag while talking to the server.";
-    return (
-      (error.response?.data as { message?: string })?.message ||
-        error.message ||
-        fallback
-    );
+    return rawMessage || error.message || fallback;
   }
   return "Unexpected error. Please try again.";
 };
