@@ -9,6 +9,7 @@ import Button from "../ui/button";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/format";
 import { fetchWishlist } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -20,6 +21,7 @@ export default function Navbar() {
   const isAdmin = user?.role === "admin";
   const [wishlistCount, setWishlistCount] = useState(0);
   const wishlistDisplay = token ? wishlistCount : 0;
+
   const total = useMemo(
     () => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [cartItems],
@@ -40,6 +42,11 @@ export default function Navbar() {
     ...(isAdmin ? [{ href: "/admin", label: "Admin Panel" }] : []),
   ];
 
+  const isLinkActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-lg">
       <div className="mx-auto max-w-6xl px-6 py-4">
@@ -56,11 +63,9 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative pb-1 ${
-                    pathname === link.href ? "text-black" : "text-gray-600"
-                  }`}
+                  className={cn("relative pb-1", isLinkActive(link.href) ? "text-black" : "text-gray-600")}
                 >
-                  {pathname === link.href && (
+                  {isLinkActive(link.href) && (
                     <motion.span
                       layoutId="nav-underline"
                       className="absolute -bottom-1 left-0 h-[2px] w-full bg-black"
@@ -71,6 +76,26 @@ export default function Navbar() {
               ))}
             </nav>
           </div>
+
+          <nav className="md:hidden" aria-label="Primary navigation">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition",
+                    isLinkActive(link.href)
+                      ? "border-black bg-black text-white"
+                      : "border-black/10 bg-white text-gray-700 hover:border-black/20",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:gap-3">
             <Link href="/wishlist">
               <Button variant="ghost" className="text-xs sm:text-sm">
@@ -107,7 +132,7 @@ export default function Navbar() {
               className="text-xs sm:text-sm"
             >
               <span className="hidden sm:inline">
-                Cart • {cartItems.length} | {formatCurrency(total)}
+                Cart | {cartItems.length} | {formatCurrency(total)}
               </span>
               <span className="sm:hidden">Cart {cartItems.length}</span>
             </Button>
