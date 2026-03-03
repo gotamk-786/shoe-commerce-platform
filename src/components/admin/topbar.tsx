@@ -2,7 +2,7 @@
 
 import { useAppSelector } from "@/store/hooks";
 
-export default function AdminTopbar() {
+export default function AdminTopbar({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const admin = useAppSelector((state) => state.admin);
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#0b1224]/90 px-6 py-4 text-white backdrop-blur">
@@ -10,7 +10,27 @@ export default function AdminTopbar() {
         <p className="text-sm uppercase tracking-[0.2em] text-white/60">Admin Panel</p>
         <p className="text-lg font-semibold text-white">Welcome back{admin.name ? `, ${admin.name}` : ""}</p>
       </div>
-      <div className="flex gap-3 text-sm text-white/80">
+      <button
+        type="button"
+        onClick={onMenuToggle}
+        className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white md:hidden"
+        aria-label="Open admin menu"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M3 6h18" />
+          <path d="M3 12h18" />
+          <path d="M3 18h18" />
+        </svg>
+      </button>
+      <div className="hidden gap-3 text-sm text-white/80 md:flex">
         <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1">Secure</span>
         <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1">Live Preview</span>
       </div>

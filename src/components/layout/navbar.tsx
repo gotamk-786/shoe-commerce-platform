@@ -60,6 +60,7 @@ const CartIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
 
 export default function Navbar() {
   const pathname = usePathname();
+  const isAdminRoute = pathname.startsWith("/admin");
   const dispatch = useAppDispatch();
   const cartItems = useAppSelector((state) => state.cart.items);
   const compareCount = useAppSelector((state) => state.compare.items.length);
@@ -113,6 +114,10 @@ export default function Navbar() {
     if (href === "/") return pathname === "/";
     return pathname === href || pathname.startsWith(`${href}/`);
   };
+
+  if (isAdminRoute) {
+    return null;
+  }
 
   return (
     <>

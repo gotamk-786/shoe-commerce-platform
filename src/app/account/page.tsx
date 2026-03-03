@@ -45,6 +45,7 @@ import {
 } from "@/lib/types";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout, updateProfile as updateProfileAction } from "@/store/slices/user-slice";
+import { cn } from "@/lib/utils";
 
 export default function AccountPage() {
   const dispatch = useAppDispatch();
@@ -112,6 +113,9 @@ export default function AccountPage() {
     loading: false,
   });
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
+  const [activeAccountSection, setActiveAccountSection] = useState<
+    "profile" | "orders" | "addresses" | "payments" | "security"
+  >("profile");
   const totalSpend = orders.reduce((sum, order) => sum + order.total, 0);
   const lastOrder = orders[0];
   const completionScore = [
@@ -250,6 +254,9 @@ export default function AccountPage() {
     "shipped",
     "delivered",
   ];
+  const isSectionOpen = (
+    section: "profile" | "orders" | "addresses" | "payments" | "security",
+  ) => activeAccountSection === section;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12 space-y-8">
@@ -343,15 +350,24 @@ export default function AccountPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[0.5fr_1fr] items-start">
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
-            <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gray-500">
-              Personal
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
+      <div className="grid items-start gap-6 lg:grid-cols-[0.5fr_1fr]">
+        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveAccountSection("profile")}
+            className="flex w-full items-center justify-between text-left md:hidden"
+          >
+            <span className="text-lg font-semibold text-gray-900">Profile</span>
+            <span className="text-sm text-gray-500">{isSectionOpen("profile") ? "Open" : "Tap to open"}</span>
+          </button>
+          <div className={cn("space-y-4", isSectionOpen("profile") ? "block" : "hidden md:block")}>
+            <div className="hidden items-center justify-between md:flex">
+              <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
+              <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gray-500">
+                Personal
+              </span>
+            </div>
+            <div className="flex items-center gap-4">
             <div className="relative">
               <div className="relative h-16 w-16 overflow-hidden rounded-full bg-black text-xs font-semibold text-white">
                 {avatarUrl ? (
@@ -418,100 +434,122 @@ export default function AccountPage() {
               </div>
             </>
           )}
+          </div>
         </div>
 
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Orders</h3>
-            <span className="pill text-gray-700">{orders.length} placed</span>
-          </div>
-          {orders.length === 0 ? (
-            <p className="text-sm text-gray-600">
-              No orders yet. Your history will populate as soon as the backend returns data.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {orders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
-                    <p className="text-xs text-gray-500">{order.status}</p>
-                    <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
-                      {statusSteps.map((step, idx) => {
-                        const activeIndex = statusSteps.indexOf(order.status);
-                        const isActive = idx <= activeIndex;
-                        return (
-                          <span
-                            key={`${order.id}-${step}`}
-                            className={`rounded-full px-2 py-1 ${
-                              isActive ? "bg-black text-white" : "bg-black/5 text-gray-400"
-                            }`}
-                          >
-                            {step}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(order.total)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(order.placedAt).toLocaleDateString()}
-                    </p>
-                    <div className="mt-2 flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          const trackingLink = buildTrackingUrl(
-                            order.courierName,
-                            order.trackingNumber,
-                            order.trackingUrl,
-                          );
-                          if (trackingLink) {
-                            window.open(trackingLink, "_blank");
-                            return;
-                          }
-                          window.location.href = `/account/orders/${order.id}`;
-                        }}
-                      >
-                        Track order
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={async () => {
-                          try {
-                            const blob = await downloadInvoice(order.id);
-                            const url = window.URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = `invoice-${order.id}.pdf`;
-                            link.click();
-                            window.URL.revokeObjectURL(url);
-                          } catch (err) {
-                            setError(handleApiError(err));
-                          }
-                        }}
-                      >
-                        Download invoice
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveAccountSection("orders")}
+            className="flex w-full items-center justify-between text-left md:hidden"
+          >
+            <span className="text-lg font-semibold text-gray-900">Orders</span>
+            <span className="text-sm text-gray-500">{isSectionOpen("orders") ? "Open" : "Tap to open"}</span>
+          </button>
+          <div className={cn("space-y-4", isSectionOpen("orders") ? "block" : "hidden md:block")}>
+            <div className="hidden items-center justify-between md:flex">
+              <h3 className="text-lg font-semibold text-gray-900">Orders</h3>
+              <span className="pill text-gray-700">{orders.length} placed</span>
             </div>
-          )}
+            {orders.length === 0 ? (
+              <p className="text-sm text-gray-600">
+                No orders yet. Your history will populate as soon as the backend returns data.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
+                      <p className="text-xs text-gray-500">{order.status}</p>
+                      <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
+                        {statusSteps.map((step, idx) => {
+                          const activeIndex = statusSteps.indexOf(order.status);
+                          const isActive = idx <= activeIndex;
+                          return (
+                            <span
+                              key={`${order.id}-${step}`}
+                              className={`rounded-full px-2 py-1 ${
+                                isActive ? "bg-black text-white" : "bg-black/5 text-gray-400"
+                              }`}
+                            >
+                              {step}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">
+                        {formatCurrency(order.total)}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(order.placedAt).toLocaleDateString()}
+                      </p>
+                      <div className="mt-2 flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            const trackingLink = buildTrackingUrl(
+                              order.courierName,
+                              order.trackingNumber,
+                              order.trackingUrl,
+                            );
+                            if (trackingLink) {
+                              window.open(trackingLink, "_blank");
+                              return;
+                            }
+                            window.location.href = `/account/orders/${order.id}`;
+                          }}
+                        >
+                          Track order
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={async () => {
+                            try {
+                              const blob = await downloadInvoice(order.id);
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = `invoice-${order.id}.pdf`;
+                              link.click();
+                              window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                              setError(handleApiError(err));
+                            }
+                          }}
+                        >
+                          Download invoice
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3 items-start">
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <h3 className="text-lg font-semibold text-gray-900">Addresses</h3>
-          <div className="space-y-2 text-sm text-gray-600">
+        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveAccountSection("addresses")}
+            className="flex w-full items-center justify-between text-left md:hidden"
+          >
+            <span className="text-lg font-semibold text-gray-900">Addresses</span>
+            <span className="text-sm text-gray-500">
+              {isSectionOpen("addresses") ? "Open" : "Tap to open"}
+            </span>
+          </button>
+          <div className={cn("space-y-4", isSectionOpen("addresses") ? "block" : "hidden md:block")}>
+            <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Addresses</h3>
+            <div className="space-y-2 text-sm text-gray-600">
             {addresses.length === 0 && <p>No saved addresses yet.</p>}
             {addresses.map((address) => (
               <div
@@ -573,92 +611,102 @@ export default function AccountPage() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="space-y-3 pt-2">
-            <Input
-              label="Label"
-              value={addressForm.label}
-              onChange={(e) => setAddressForm((prev) => ({ ...prev, label: e.target.value }))}
-            />
-            <Input
-              label="Street"
-              value={addressForm.street}
-              onChange={(e) => setAddressForm((prev) => ({ ...prev, street: e.target.value }))}
-            />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="City"
-                value={addressForm.city}
-                onChange={(e) => setAddressForm((prev) => ({ ...prev, city: e.target.value }))}
-              />
-              <Input
-                label="State"
-                value={addressForm.state}
-                onChange={(e) => setAddressForm((prev) => ({ ...prev, state: e.target.value }))}
-              />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-3 pt-2">
               <Input
-                label="Zip"
-                value={addressForm.zip}
-                onChange={(e) => setAddressForm((prev) => ({ ...prev, zip: e.target.value }))}
+                label="Label"
+                value={addressForm.label}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, label: e.target.value }))}
               />
               <Input
-                label="Country"
-                value={addressForm.country}
-                onChange={(e) => setAddressForm((prev) => ({ ...prev, country: e.target.value }))}
+                label="Street"
+                value={addressForm.street}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, street: e.target.value }))}
               />
-            </div>
-            <Input
-              label="Phone"
-              value={addressForm.phone}
-              onChange={(e) => setAddressForm((prev) => ({ ...prev, phone: e.target.value }))}
-            />
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={addressForm.isDefault}
-                onChange={(e) =>
-                  setAddressForm((prev) => ({ ...prev, isDefault: e.target.checked }))
-                }
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="City"
+                  value={addressForm.city}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, city: e.target.value }))}
+                />
+                <Input
+                  label="State"
+                  value={addressForm.state}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, state: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Zip"
+                  value={addressForm.zip}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, zip: e.target.value }))}
+                />
+                <Input
+                  label="Country"
+                  value={addressForm.country}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, country: e.target.value }))}
+                />
+              </div>
+              <Input
+                label="Phone"
+                value={addressForm.phone}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, phone: e.target.value }))}
               />
-              Set as default
-            </label>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                try {
-                  if (editingAddressId) {
-                    await updateAddress(editingAddressId, addressForm);
-                    setEditingAddressId(null);
-                  } else {
-                    await createAddress(addressForm);
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={addressForm.isDefault}
+                  onChange={(e) =>
+                    setAddressForm((prev) => ({ ...prev, isDefault: e.target.checked }))
                   }
-                  const refreshed = await fetchAddresses();
-                  setAddresses(refreshed);
-                  setAddressForm({
-                    label: "",
-                    street: "",
-                    city: "",
-                    state: "",
-                    zip: "",
-                    country: "",
-                    phone: "",
-                    isDefault: false,
-                  });
-                } catch (err) {
-                  setError(handleApiError(err));
-                }
-              }}
-            >
-              {editingAddressId ? "Update address" : "Add address"}
-            </Button>
+                />
+                Set as default
+              </label>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    if (editingAddressId) {
+                      await updateAddress(editingAddressId, addressForm);
+                      setEditingAddressId(null);
+                    } else {
+                      await createAddress(addressForm);
+                    }
+                    const refreshed = await fetchAddresses();
+                    setAddresses(refreshed);
+                    setAddressForm({
+                      label: "",
+                      street: "",
+                      city: "",
+                      state: "",
+                      zip: "",
+                      country: "",
+                      phone: "",
+                      isDefault: false,
+                    });
+                  } catch (err) {
+                    setError(handleApiError(err));
+                  }
+                }}
+              >
+                {editingAddressId ? "Update address" : "Add address"}
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <h3 className="text-lg font-semibold text-gray-900">Payment methods</h3>
-          <div className="space-y-2 text-sm text-gray-600">
+        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveAccountSection("payments")}
+            className="flex w-full items-center justify-between text-left md:hidden"
+          >
+            <span className="text-lg font-semibold text-gray-900">Payment methods</span>
+            <span className="text-sm text-gray-500">{isSectionOpen("payments") ? "Open" : "Tap to open"}</span>
+          </button>
+          <div className={cn("space-y-4", isSectionOpen("payments") ? "block" : "hidden md:block")}>
+            <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Payment methods</h3>
+            <div className="space-y-2 text-sm text-gray-600">
             {paymentMethods.length === 0 && <p>No payment methods saved.</p>}
             {paymentMethods.map((method) => (
               <div
@@ -703,70 +751,71 @@ export default function AccountPage() {
                 </div>
               </div>
             ))}
-          </div>
-          <div className="space-y-3 pt-2">
-            <label className="flex w-full flex-col gap-2 text-sm text-gray-700">
-              <span className="text-sm font-medium text-gray-900">Provider</span>
-              <select
-                value={paymentForm.provider}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, provider: e.target.value }))}
-                className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-900 shadow-[0_12px_40px_rgba(12,22,44,0.06)] outline-none"
-              >
-                <option value="easypaisa">EasyPaisa</option>
-                <option value="jazzcash">JazzCash</option>
-                <option value="bank">Bank Transfer</option>
-              </select>
-            </label>
-            <Input
-              label="Label"
-              value={paymentForm.label}
-              onChange={(e) => setPaymentForm((prev) => ({ ...prev, label: e.target.value }))}
-            />
-            <Input
-              label="Masked number"
-              placeholder="**** 1234"
-              value={paymentForm.maskedNumber}
-              onChange={(e) => setPaymentForm((prev) => ({ ...prev, maskedNumber: e.target.value }))}
-            />
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input
-                type="checkbox"
-                checked={paymentForm.isDefault}
-                onChange={(e) =>
-                  setPaymentForm((prev) => ({ ...prev, isDefault: e.target.checked }))
-                }
+            </div>
+            <div className="space-y-3 pt-2">
+              <label className="flex w-full flex-col gap-2 text-sm text-gray-700">
+                <span className="text-sm font-medium text-gray-900">Provider</span>
+                <select
+                  value={paymentForm.provider}
+                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, provider: e.target.value }))}
+                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-900 shadow-[0_12px_40px_rgba(12,22,44,0.06)] outline-none"
+                >
+                  <option value="easypaisa">EasyPaisa</option>
+                  <option value="jazzcash">JazzCash</option>
+                  <option value="bank">Bank Transfer</option>
+                </select>
+              </label>
+              <Input
+                label="Label"
+                value={paymentForm.label}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, label: e.target.value }))}
               />
-              Set as default
-            </label>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                try {
-                  if (editingPaymentId) {
-                    await updatePaymentMethod(editingPaymentId, paymentForm);
-                    setEditingPaymentId(null);
-                  } else {
-                    await createPaymentMethod(paymentForm);
+              <Input
+                label="Masked number"
+                placeholder="**** 1234"
+                value={paymentForm.maskedNumber}
+                onChange={(e) => setPaymentForm((prev) => ({ ...prev, maskedNumber: e.target.value }))}
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={paymentForm.isDefault}
+                  onChange={(e) =>
+                    setPaymentForm((prev) => ({ ...prev, isDefault: e.target.checked }))
                   }
-                  const refreshed = await fetchPaymentMethods();
-                  setPaymentMethods(refreshed);
-                  setPaymentForm({
-                    provider: "easypaisa",
-                    label: "",
-                    maskedNumber: "",
-                    isDefault: false,
-                  });
-                } catch (err) {
-                  setError(handleApiError(err));
-                }
-              }}
-            >
-              {editingPaymentId ? "Update method" : "Add method"}
-            </Button>
+                />
+                Set as default
+              </label>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    if (editingPaymentId) {
+                      await updatePaymentMethod(editingPaymentId, paymentForm);
+                      setEditingPaymentId(null);
+                    } else {
+                      await createPaymentMethod(paymentForm);
+                    }
+                    const refreshed = await fetchPaymentMethods();
+                    setPaymentMethods(refreshed);
+                    setPaymentForm({
+                      provider: "easypaisa",
+                      label: "",
+                      maskedNumber: "",
+                      isDefault: false,
+                    });
+                  } catch (err) {
+                    setError(handleApiError(err));
+                  }
+                }}
+              >
+                {editingPaymentId ? "Update method" : "Add method"}
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div className="hidden self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)] md:block">
           <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
           <label className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 text-sm">
             <span>Email updates</span>
@@ -822,7 +871,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="hidden gap-6 lg:grid-cols-2 items-start md:grid">
         <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
           <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -921,7 +970,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="hidden gap-6 lg:grid-cols-2 items-start md:grid">
         <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
           <h3 className="text-lg font-semibold text-gray-900">Returns & refunds</h3>
           <div className="space-y-2 text-sm text-gray-600">
@@ -987,9 +1036,18 @@ export default function AccountPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <h3 className="text-lg font-semibold text-gray-900">Security</h3>
-          <div className="rounded-2xl border border-black/10 px-4 py-3 text-sm text-gray-600">
+        <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+          <button
+            type="button"
+            onClick={() => setActiveAccountSection("security")}
+            className="flex w-full items-center justify-between text-left md:hidden"
+          >
+            <span className="text-lg font-semibold text-gray-900">Security</span>
+            <span className="text-sm text-gray-500">{isSectionOpen("security") ? "Open" : "Tap to open"}</span>
+          </button>
+          <div className={cn("space-y-4", isSectionOpen("security") ? "block" : "hidden md:block")}>
+            <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Security</h3>
+            <div className="rounded-2xl border border-black/10 px-4 py-3 text-sm text-gray-600">
             <div className="flex items-center justify-between">
               <p>Email 2FA</p>
               <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
@@ -1056,70 +1114,71 @@ export default function AccountPage() {
               <p className="mt-2 text-xs text-rose-500">{twoFactorStatus.error}</p>
             )}
           </div>
-          {!showPasswordForm ? (
-            <div className="space-y-3 text-sm text-gray-600">
-              <p>Update your password when needed.</p>
-              <Button variant="ghost" onClick={() => setShowPasswordForm(true)}>
-                Change password
-              </Button>
-            </div>
-          ) : (
-            <>
-              <Input
-                label="Current password"
-                type="password"
-                value={passwordForm.currentPassword}
-                onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
-                }
-              />
-              <Input
-                label="New password"
-                type="password"
-                value={passwordForm.newPassword}
-                onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
-                }
-              />
-              <Input
-                label="Confirm new password"
-                type="password"
-                value={passwordForm.confirmPassword}
-                onChange={(e) =>
-                  setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
-                }
-              />
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="primary"
-                  onClick={async () => {
-                    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-                      setError("New password and confirmation must match.");
-                      return;
-                    }
-                    try {
-                      await changePassword({
-                        currentPassword: passwordForm.currentPassword,
-                        newPassword: passwordForm.newPassword,
-                      });
-                      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                      setShowPasswordForm(false);
-                    } catch (err) {
-                      setError(handleApiError(err));
-                    }
-                  }}
-                >
-                  Update password
-                </Button>
-                <Button variant="ghost" onClick={() => setShowPasswordForm(false)}>
-                  Cancel
+            {!showPasswordForm ? (
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>Update your password when needed.</p>
+                <Button variant="ghost" onClick={() => setShowPasswordForm(true)}>
+                  Change password
                 </Button>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <Input
+                  label="Current password"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
+                  }
+                />
+                <Input
+                  label="New password"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                />
+                <Input
+                  label="Confirm new password"
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  }
+                />
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
+                      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                        setError("New password and confirmation must match.");
+                        return;
+                      }
+                      try {
+                        await changePassword({
+                          currentPassword: passwordForm.currentPassword,
+                          newPassword: passwordForm.newPassword,
+                        });
+                        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                        setShowPasswordForm(false);
+                      } catch (err) {
+                        setError(handleApiError(err));
+                      }
+                    }}
+                  >
+                    Update password
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowPasswordForm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div className="hidden space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)] md:block">
           <h3 className="text-lg font-semibold text-gray-900">Recently viewed</h3>
           {recentlyViewed.length ? (
             <div className="flex gap-4 overflow-x-auto pb-2">
