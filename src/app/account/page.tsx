@@ -47,6 +47,16 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout, updateProfile as updateProfileAction } from "@/store/slices/user-slice";
 import { cn } from "@/lib/utils";
 
+type AccountSection = "profile" | "orders" | "addresses" | "payments" | "security";
+
+const accountSections: { id: AccountSection; label: string; hint: string }[] = [
+  { id: "profile", label: "Profile", hint: "Personal info" },
+  { id: "orders", label: "Orders", hint: "Orders & returns" },
+  { id: "addresses", label: "Addresses", hint: "Shipping places" },
+  { id: "payments", label: "Payments", hint: "Payment & alerts" },
+  { id: "security", label: "Security", hint: "Password & 2FA" },
+];
+
 export default function AccountPage() {
   const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.user.token);
@@ -113,9 +123,7 @@ export default function AccountPage() {
     loading: false,
   });
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
-  const [activeAccountSection, setActiveAccountSection] = useState<
-    "profile" | "orders" | "addresses" | "payments" | "security"
-  >("profile");
+  const [activeAccountSection, setActiveAccountSection] = useState<AccountSection>("profile");
   const totalSpend = orders.reduce((sum, order) => sum + order.total, 0);
   const lastOrder = orders[0];
   const completionScore = [
@@ -254,9 +262,7 @@ export default function AccountPage() {
     "shipped",
     "delivered",
   ];
-  const isSectionOpen = (
-    section: "profile" | "orders" | "addresses" | "payments" | "security",
-  ) => activeAccountSection === section;
+  const isSectionOpen = (section: AccountSection) => activeAccountSection === section;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12 space-y-8">
@@ -350,8 +356,38 @@ export default function AccountPage() {
         </p>
       </div>
 
+      <div className="rounded-3xl border border-black/10 bg-white p-4 shadow-[0_14px_50px_rgba(12,22,44,0.08)]">
+        <p className="px-2 text-xs uppercase tracking-[0.2em] text-gray-500">Account menu</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {accountSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setActiveAccountSection(section.id)}
+              className={cn(
+                "rounded-2xl border px-4 py-2 text-left transition",
+                isSectionOpen(section.id)
+                  ? "border-black bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)]"
+                  : "border-black/10 bg-white text-gray-900 hover:border-black/30",
+              )}
+              aria-pressed={isSectionOpen(section.id)}
+            >
+              <p className="text-sm font-semibold">{section.label}</p>
+              <p className={cn("text-xs", isSectionOpen(section.id) ? "text-white/80" : "text-gray-500")}>
+                {section.hint}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid items-start gap-6 lg:grid-cols-[0.5fr_1fr]">
-        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div
+          className={cn(
+            "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("profile") ? "block" : "hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => setActiveAccountSection("profile")}
@@ -360,7 +396,7 @@ export default function AccountPage() {
             <span className="text-lg font-semibold text-gray-900">Profile</span>
             <span className="text-sm text-gray-500">{isSectionOpen("profile") ? "Open" : "Tap to open"}</span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("profile") ? "block" : "hidden md:block")}>
+          <div className={cn("space-y-4", isSectionOpen("profile") ? "block" : "hidden")}>
             <div className="hidden items-center justify-between md:flex">
               <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
               <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gray-500">
@@ -437,7 +473,12 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div
+          className={cn(
+            "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("orders") ? "block" : "hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => setActiveAccountSection("orders")}
@@ -446,7 +487,7 @@ export default function AccountPage() {
             <span className="text-lg font-semibold text-gray-900">Orders</span>
             <span className="text-sm text-gray-500">{isSectionOpen("orders") ? "Open" : "Tap to open"}</span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("orders") ? "block" : "hidden md:block")}>
+          <div className={cn("space-y-4", isSectionOpen("orders") ? "block" : "hidden")}>
             <div className="hidden items-center justify-between md:flex">
               <h3 className="text-lg font-semibold text-gray-900">Orders</h3>
               <span className="pill text-gray-700">{orders.length} placed</span>
@@ -536,7 +577,12 @@ export default function AccountPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3 items-start">
-        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div
+          className={cn(
+            "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("addresses") ? "block" : "hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => setActiveAccountSection("addresses")}
@@ -547,7 +593,7 @@ export default function AccountPage() {
               {isSectionOpen("addresses") ? "Open" : "Tap to open"}
             </span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("addresses") ? "block" : "hidden md:block")}>
+          <div className={cn("space-y-4", isSectionOpen("addresses") ? "block" : "hidden")}>
             <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Addresses</h3>
             <div className="space-y-2 text-sm text-gray-600">
             {addresses.length === 0 && <p>No saved addresses yet.</p>}
@@ -695,7 +741,12 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <div className="self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div
+          className={cn(
+            "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("payments") ? "block" : "hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => setActiveAccountSection("payments")}
@@ -704,7 +755,7 @@ export default function AccountPage() {
             <span className="text-lg font-semibold text-gray-900">Payment methods</span>
             <span className="text-sm text-gray-500">{isSectionOpen("payments") ? "Open" : "Tap to open"}</span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("payments") ? "block" : "hidden md:block")}>
+          <div className={cn("space-y-4", isSectionOpen("payments") ? "block" : "hidden")}>
             <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Payment methods</h3>
             <div className="space-y-2 text-sm text-gray-600">
             {paymentMethods.length === 0 && <p>No payment methods saved.</p>}
@@ -815,7 +866,12 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <div className="hidden self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)] md:block">
+        <div
+          className={cn(
+            "self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("payments") ? "block" : "hidden",
+          )}
+        >
           <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
           <label className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 text-sm">
             <span>Email updates</span>
@@ -871,7 +927,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="hidden gap-6 lg:grid-cols-2 items-start md:grid">
+      <div className={cn("gap-6 lg:grid-cols-2 items-start", isSectionOpen("profile") ? "grid" : "hidden")}>
         <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
           <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -970,7 +1026,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="hidden gap-6 lg:grid-cols-2 items-start md:grid">
+      <div className={cn("gap-6 lg:grid-cols-2 items-start", isSectionOpen("orders") ? "grid" : "hidden")}>
         <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
           <h3 className="text-lg font-semibold text-gray-900">Returns & refunds</h3>
           <div className="space-y-2 text-sm text-gray-600">
@@ -1036,7 +1092,12 @@ export default function AccountPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+        <div
+          className={cn(
+            "rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("security") ? "block" : "hidden",
+          )}
+        >
           <button
             type="button"
             onClick={() => setActiveAccountSection("security")}
@@ -1045,7 +1106,7 @@ export default function AccountPage() {
             <span className="text-lg font-semibold text-gray-900">Security</span>
             <span className="text-sm text-gray-500">{isSectionOpen("security") ? "Open" : "Tap to open"}</span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("security") ? "block" : "hidden md:block")}>
+          <div className={cn("space-y-4", isSectionOpen("security") ? "block" : "hidden")}>
             <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Security</h3>
             <div className="rounded-2xl border border-black/10 px-4 py-3 text-sm text-gray-600">
             <div className="flex items-center justify-between">
@@ -1178,7 +1239,12 @@ export default function AccountPage() {
           </div>
         </div>
 
-        <div className="hidden space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)] md:block">
+        <div
+          className={cn(
+            "space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
+            isSectionOpen("profile") ? "block" : "hidden",
+          )}
+        >
           <h3 className="text-lg font-semibold text-gray-900">Recently viewed</h3>
           {recentlyViewed.length ? (
             <div className="flex gap-4 overflow-x-auto pb-2">
