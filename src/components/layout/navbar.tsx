@@ -181,7 +181,7 @@ export default function Navbar() {
                   className={cn(
                     "block rounded-xl border px-4 py-3 text-base font-medium transition",
                     isLinkActive(link.href)
-                      ? "border-black bg-black text-white"
+                      ? "border-gray-300 bg-gray-100 text-gray-900"
                       : "border-black/10 text-gray-800 hover:border-black/20",
                   )}
                 >
