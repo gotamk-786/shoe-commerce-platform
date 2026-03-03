@@ -30,8 +30,6 @@ function CollectionContent() {
       sort: searchParams.get("sort") || undefined,
       gender: searchParams.get("gender") || undefined,
       color: searchParams.get("color") || undefined,
-      minPrice: searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined,
-      maxPrice: searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined,
       q: searchParams.get("q") || undefined,
     };
   }, [searchParams]);
