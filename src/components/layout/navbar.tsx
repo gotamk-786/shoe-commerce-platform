@@ -20,6 +20,7 @@ export default function Navbar() {
   const token = useAppSelector((state) => state.user.token);
   const isAdmin = user?.role === "admin";
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const wishlistDisplay = token ? wishlistCount : 0;
 
   const total = useMemo(
@@ -33,6 +34,10 @@ export default function Navbar() {
       .then((items) => setWishlistCount(items.length))
       .catch(() => setWishlistCount(0));
   }, [token]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const links = [
     { href: "/", label: "Home" },
@@ -51,13 +56,43 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 backdrop-blur-lg">
       <div className="mx-auto max-w-6xl px-6 py-4">
         <div className="glass fade-border flex flex-col gap-3 rounded-2xl px-4 py-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-6 md:gap-8">
+          <div className="flex items-center justify-between md:justify-start md:gap-8">
             <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
               <div className="grid h-9 w-9 place-items-center rounded-full bg-black text-sm font-bold text-white">
                 TS
               </div>
               <span>Thrifty Shoes</span>
             </Link>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((value) => !value)}
+              className="grid h-10 w-10 place-items-center rounded-full border border-black/10 bg-white text-gray-800 md:hidden"
+              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {mobileMenuOpen ? (
+                  <>
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M3 6h18" />
+                    <path d="M3 12h18" />
+                    <path d="M3 18h18" />
+                  </>
+                )}
+              </svg>
+            </button>
             <nav className="hidden items-center gap-6 text-sm text-gray-700 md:flex">
               {links.map((link) => (
                 <Link
@@ -77,25 +112,6 @@ export default function Navbar() {
             </nav>
           </div>
 
-          <nav className="md:hidden" aria-label="Primary navigation">
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-              {links.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition",
-                    isLinkActive(link.href)
-                      ? "border-black bg-black text-white"
-                      : "border-black/10 bg-white text-gray-700 hover:border-black/20",
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </nav>
-
           <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:gap-3">
             <Link href="/wishlist">
               <Button variant="ghost" className="text-xs sm:text-sm">
@@ -113,7 +129,7 @@ export default function Navbar() {
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" />
                     </svg>
                   </span>
-                  <span className="hidden sm:inline">Wishlist</span>
+                  <span>Wishlist</span>
                   <span className="rounded-full bg-black px-2 py-0.5 text-xs text-white">
                     {wishlistDisplay}
                   </span>
@@ -122,8 +138,8 @@ export default function Navbar() {
             </Link>
             <Link href="/compare">
               <Button variant="ghost" className="text-xs sm:text-sm">
-                <span className="hidden sm:inline">Compare</span>
-                <span className="sm:ml-1">{compareCount}</span>
+                <span>Compare</span>
+                <span className="ml-1">{compareCount}</span>
               </Button>
             </Link>
             <Button
@@ -131,14 +147,51 @@ export default function Navbar() {
               onClick={() => dispatch(toggleCart(true))}
               className="text-xs sm:text-sm"
             >
-              <span className="hidden sm:inline">
-                Cart | {cartItems.length} | {formatCurrency(total)}
-              </span>
-              <span className="sm:hidden">Cart {cartItems.length}</span>
+              <span>Cart {cartItems.length}</span>
+              <span className="hidden sm:inline">| {formatCurrency(total)}</span>
             </Button>
           </div>
         </div>
       </div>
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/35 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        >
+          <aside
+            className="h-full w-[86%] max-w-xs bg-white px-5 py-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500">Menu</p>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-full border border-black/10 px-3 py-1 text-sm text-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            <nav className="space-y-2" aria-label="Mobile navigation">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "block rounded-xl border px-4 py-3 text-base font-medium transition",
+                    isLinkActive(link.href)
+                      ? "border-black bg-black text-white"
+                      : "border-black/10 text-gray-800 hover:border-black/20",
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </aside>
+        </div>
+      )}
     </header>
   );
 }
