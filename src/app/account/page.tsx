@@ -24,10 +24,6 @@ import {
   updateNotifications,
   changePassword,
   downloadInvoice,
-  fetchPreferences,
-  updatePreferences,
-  fetchTickets,
-  createTicket,
   fetchReturns,
   createReturn,
   fetchActivity,
@@ -101,15 +97,6 @@ export default function AccountPage() {
     confirmPassword: "",
   });
   const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [preferences, setPreferences] = useState({
-    sizeUS: "",
-    sizeEU: "",
-    brandsText: "",
-  });
-  const [tickets, setTickets] = useState<
-    { id: string; subject: string; message: string; status: string; createdAt: string }[]
-  >([]);
-  const [ticketForm, setTicketForm] = useState({ subject: "", message: "" });
   const [returns, setReturns] = useState<
     { id: string; orderId: string; reason: string; status: string; createdAt: string }[]
   >([]);
@@ -133,10 +120,9 @@ export default function AccountPage() {
     Boolean(coverUrl),
     addresses.length > 0,
     paymentMethods.length > 0,
-    Boolean(preferences.sizeUS || preferences.sizeEU || preferences.brandsText),
     twoFactorEnabled,
   ].filter(Boolean).length;
-  const completionPercent = Math.round((completionScore / 8) * 100);
+  const completionPercent = Math.round((completionScore / 7) * 100);
   const initials =
     profile?.name
       ?.split(" ")
@@ -162,8 +148,6 @@ export default function AccountPage() {
           addressData,
           paymentData,
           notificationData,
-          preferenceData,
-          ticketData,
           returnData,
           activityData,
         ] = await Promise.all([
@@ -171,8 +155,6 @@ export default function AccountPage() {
           fetchAddresses(),
           fetchPaymentMethods(),
           fetchNotifications(),
-          fetchPreferences(),
-          fetchTickets(),
           fetchReturns(),
           fetchActivity(),
         ]);
@@ -180,14 +162,6 @@ export default function AccountPage() {
         setAddresses(addressData || []);
         setPaymentMethods(paymentData || []);
         setNotifications(notificationData || { emailEnabled: true, smsEnabled: false, phone: "" });
-        setPreferences({
-          sizeUS: preferenceData?.sizeUS ?? "",
-          sizeEU: preferenceData?.sizeEU ?? "",
-          brandsText: Array.isArray(preferenceData?.brands)
-            ? preferenceData.brands.join(", ")
-            : "",
-        });
-        setTickets(ticketData || []);
         setReturns(returnData || []);
         setActivity(activityData || []);
         setTwoFactorEnabled(user.twoFactorEnabled ?? false);
@@ -352,7 +326,7 @@ export default function AccountPage() {
           />
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          Add a photo, address, and preferences to unlock a complete profile.
+          Add a photo, address, and secure login to complete your profile.
         </p>
       </div>
 
@@ -381,7 +355,7 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[0.5fr_1fr]">
+      <div className="grid items-start gap-6">
         <div
           className={cn(
             "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
@@ -396,80 +370,84 @@ export default function AccountPage() {
             <span className="text-lg font-semibold text-gray-900">Profile</span>
             <span className="text-sm text-gray-500">{isSectionOpen("profile") ? "Open" : "Tap to open"}</span>
           </button>
-          <div className={cn("space-y-4", isSectionOpen("profile") ? "block" : "hidden")}>
+          <div className={cn("space-y-6", isSectionOpen("profile") ? "block" : "hidden")}>
             <div className="hidden items-center justify-between md:flex">
               <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
               <span className="rounded-full bg-black/5 px-3 py-1 text-xs uppercase tracking-[0.2em] text-gray-500">
                 Personal
               </span>
             </div>
-            <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="relative h-16 w-16 overflow-hidden rounded-full bg-black text-xs font-semibold text-white">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={profile?.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="grid h-full w-full place-items-center">{initials}</div>
-                )}
+            <div className="flex flex-col gap-5 rounded-2xl border border-black/10 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="relative h-20 w-20 overflow-hidden rounded-full bg-black text-sm font-semibold text-white">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={profile?.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center">{initials}</div>
+                    )}
+                  </div>
+                  <label className="absolute -bottom-1 -right-1 grid h-7 w-7 cursor-pointer place-items-center rounded-full border border-white bg-black text-sm text-white shadow">
+                    +
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          setUploading(true);
+                          const uploaded = await uploadAvatar(file);
+                          setAvatarUrl(uploaded.url);
+                          const updated = await updateProfile({ avatarUrl: uploaded.url });
+                          setProfile(updated);
+                          dispatch(updateProfileAction(updated));
+                        } catch (err) {
+                          setError(handleApiError(err));
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+                <div className="text-sm text-gray-600">
+                  <p className="text-lg font-semibold text-gray-900">{profile?.name}</p>
+                  <p>{profile?.email}</p>
+                  <p className="text-xs text-gray-500">
+                    {uploading ? "Uploading photo..." : "Tap + to add a PNG/JPG (max 5MB)."}
+                  </p>
+                </div>
               </div>
-              <label className="absolute -bottom-1 -right-1 grid h-6 w-6 cursor-pointer place-items-center rounded-full border border-white bg-black text-xs text-white shadow">
-                +
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    try {
-                      setUploading(true);
-                      const uploaded = await uploadAvatar(file);
-                      setAvatarUrl(uploaded.url);
-                      const updated = await updateProfile({ avatarUrl: uploaded.url });
-                      setProfile(updated);
-                      dispatch(updateProfileAction(updated));
-                    } catch (err) {
-                      setError(handleApiError(err));
-                    } finally {
-                      setUploading(false);
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
+              {!showProfileForm && (
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="ghost" onClick={() => setShowProfileForm(true)}>
+                    Edit profile
+                  </Button>
+                  <Button variant="ghost" onClick={() => (window.location.href = "/wishlist")}>
+                    View wishlist
+                  </Button>
+                </div>
+              )}
             </div>
-            <div className="flex-1 text-sm text-gray-600">
-              <p className="text-sm font-medium text-gray-900">Profile photo</p>
-              <p className="text-xs text-gray-500">
-                {uploading ? "Uploading photo..." : "Tap + to add a PNG/JPG (max 5MB)."}
-              </p>
-            </div>
-          </div>
-          {!showProfileForm ? (
-            <div className="space-y-2 text-sm text-gray-600">
-              <p className="text-sm font-medium text-gray-900">{profile?.name}</p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Button variant="ghost" onClick={() => setShowProfileForm(true)}>
-                  Edit profile
-                </Button>
-                <Button variant="ghost" onClick={() => (window.location.href = "/wishlist")}>
-                  View wishlist
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} />
-              <Input label="Email address" value={profile?.email} disabled />
-              <div className="flex flex-wrap gap-3">
-                <Button variant="primary" onClick={saveProfile} disabled={saving}>
-                  Save changes
-                </Button>
-                <Button variant="ghost" onClick={() => setShowProfileForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </>
-          )}
+
+            {showProfileForm && (
+              <>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <Input label="Full name" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input label="Email address" value={profile?.email} disabled />
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="primary" onClick={saveProfile} disabled={saving}>
+                    Save changes
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowProfileForm(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -923,105 +901,6 @@ export default function AccountPage() {
             }}
           >
             Save preferences
-          </Button>
-        </div>
-      </div>
-
-      <div className={cn("gap-6 lg:grid-cols-2 items-start", isSectionOpen("profile") ? "grid" : "hidden")}>
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              label="Size (US)"
-              value={preferences.sizeUS}
-              onChange={(e) => setPreferences((prev) => ({ ...prev, sizeUS: e.target.value }))}
-            />
-            <Input
-              label="Size (EU)"
-              value={preferences.sizeEU}
-              onChange={(e) => setPreferences((prev) => ({ ...prev, sizeEU: e.target.value }))}
-            />
-          </div>
-          <Input
-            label="Favorite brands"
-            placeholder="Nike, Adidas, Puma"
-            value={preferences.brandsText}
-            onChange={(e) =>
-              setPreferences((prev) => ({ ...prev, brandsText: e.target.value }))
-            }
-          />
-          <Button
-            variant="primary"
-            onClick={async () => {
-              try {
-                const brands = preferences.brandsText
-                  .split(",")
-                  .map((item) => item.trim())
-                  .filter(Boolean);
-                const updated = await updatePreferences({
-                  sizeUS: preferences.sizeUS || undefined,
-                  sizeEU: preferences.sizeEU || undefined,
-                  brands,
-                });
-                setPreferences({
-                  sizeUS: updated.sizeUS ?? "",
-                  sizeEU: updated.sizeEU ?? "",
-                  brandsText: Array.isArray(updated.brands) ? updated.brands.join(", ") : "",
-                });
-              } catch (err) {
-                setError(handleApiError(err));
-              }
-            }}
-          >
-            Save preferences
-          </Button>
-        </div>
-
-        <div className="self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-          <h3 className="text-lg font-semibold text-gray-900">Support tickets</h3>
-          <div className="space-y-2 text-sm text-gray-600">
-            {tickets.length === 0 && <p>No tickets yet.</p>}
-            {tickets.map((ticket) => (
-              <div
-                key={ticket.id}
-                className="rounded-2xl border border-black/10 px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-gray-900">{ticket.subject}</p>
-                  <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                    {ticket.status}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 line-clamp-2">{ticket.message}</p>
-              </div>
-            ))}
-          </div>
-          <Input
-            label="Subject"
-            value={ticketForm.subject}
-            onChange={(e) => setTicketForm((prev) => ({ ...prev, subject: e.target.value }))}
-          />
-          <label className="flex w-full flex-col gap-2 text-sm text-gray-700">
-            <span className="text-sm font-medium text-gray-900">Message</span>
-            <textarea
-              className="min-h-[90px] w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-900 shadow-[0_12px_40px_rgba(12,22,44,0.06)] outline-none"
-              value={ticketForm.message}
-              onChange={(e) => setTicketForm((prev) => ({ ...prev, message: e.target.value }))}
-            />
-          </label>
-          <Button
-            variant="primary"
-            onClick={async () => {
-              try {
-                const created = await createTicket(ticketForm);
-                setTickets((prev) => [created, ...prev]);
-                setTicketForm({ subject: "", message: "" });
-              } catch (err) {
-                setError(handleApiError(err));
-              }
-            }}
-          >
-            Create ticket
           </Button>
         </div>
       </div>
