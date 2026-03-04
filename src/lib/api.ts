@@ -71,6 +71,9 @@ apiClient.interceptors.request.use((config) => {
 
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
+    if (!error.response) {
+      return "Network issue while contacting server. Please try again.";
+    }
     const rawMessage = (error.response?.data as { message?: string })?.message;
     const normalizedMessage = rawMessage?.trim().toLowerCase();
     if (
@@ -584,9 +587,7 @@ export const adminDeleteCoupon = async (couponId: string) => {
 export const adminUploadImage = async (file: File): Promise<{ url: string; publicId: string }> => {
   const formData = new FormData();
   formData.append("image", file);
-  const { data } = await apiClient.post("/admin/uploads", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await apiClient.post("/admin/uploads", formData);
   return data;
 };
 
@@ -597,8 +598,6 @@ export const adminUploadAsset = async (file: File): Promise<{ url: string; publi
 export const uploadAvatar = async (file: File): Promise<{ url: string; publicId: string }> => {
   const formData = new FormData();
   formData.append("image", file);
-  const { data } = await apiClient.post("/uploads", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await apiClient.post("/uploads", formData);
   return data;
 };

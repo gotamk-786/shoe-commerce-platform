@@ -1,39 +1,50 @@
 import { Router } from "express";
 import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
 import { requireUser } from "../middleware/jwt-auth";
+import { cloudinaryReady, uploadBufferToCloudinary } from "../lib/media-upload";
 
 const router = Router();
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+const upload = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      return cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "image"));
+    }
+    return cb(null, true);
+  },
 });
 
-router.post("/", requireUser, upload.single("image"), async (req, res, next) => {
+router.post("/", requireUser, async (req, res, next) => {
   try {
-    if (!process.env.CLOUDINARY_CLOUD_NAME) {
-      return res.status(500).json({ message: "Cloudinary not configured" });
+    await new Promise<void>((resolve, reject) =>
+      upload.single("image")(req, res, (error) => (error ? reject(error) : resolve())),
+    );
+
+    if (!cloudinaryReady) {
+      return res.status(500).json({ message: "Image storage is not configured." });
     }
 
     if (!req.file) {
-      return res.status(400).json({ message: "No image uploaded" });
+      return res.status(400).json({ message: "No image uploaded." });
     }
 
-    const base64 = req.file.buffer.toString("base64");
-    const dataUri = `data:${req.file.mimetype};base64,${base64}`;
-
-    const result = await cloudinary.uploader.upload(dataUri, {
+    const uploaded = await uploadBufferToCloudinary({
+      buffer: req.file.buffer,
       folder: "thirfy-avatars",
-      resource_type: "image",
+      resourceType: "image",
     });
 
-    return res.json({ url: result.secure_url, publicId: result.public_id });
+    return res.json(uploaded);
   } catch (error) {
+    if (error instanceof multer.MulterError) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ message: "Image too large. Max size is 8MB." });
+      }
+      return res.status(400).json({ message: "Please upload a valid image file." });
+    }
     return next(error);
   }
 });

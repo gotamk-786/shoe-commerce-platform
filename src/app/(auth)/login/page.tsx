@@ -58,9 +58,6 @@ export default function LoginPage() {
         <div>
           <p className="pill mb-2 inline-block">Welcome back</p>
           <h1 className="text-2xl font-semibold text-gray-900">Log in to Thrifty Shoes</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Smooth Apple-grade auth UI. JWT handled client-side.
-          </p>
         </div>
         <form className="space-y-4" onSubmit={submit}>
           <Button
