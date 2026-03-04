@@ -16,10 +16,36 @@ import {
 import { AdminOrder, ProfitOrderItem, ProfitSummaryBucket } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 
-const formatPeriodLabel = (period: string) => {
+const formatPeriodLabel = (period: unknown) => {
+  if (typeof period !== "string") return "N/A";
   if (period.includes("W")) return period.replace("-", " ");
   if (period.length >= 10) return period.slice(5);
   return period;
+};
+
+const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+
+const sanitizeOrder = (order: unknown): AdminOrder | null => {
+  if (!order || typeof order !== "object") return null;
+  const data = order as Record<string, unknown>;
+  if (typeof data.id !== "string") return null;
+  const customerData =
+    data.customer && typeof data.customer === "object"
+      ? (data.customer as Record<string, unknown>)
+      : {};
+  return {
+    id: data.id,
+    status:
+      typeof data.status === "string"
+        ? (data.status as AdminOrder["status"])
+        : "processing",
+    total: typeof data.total === "number" ? data.total : 0,
+    placedAt: typeof data.placedAt === "string" ? data.placedAt : new Date().toISOString(),
+    customer: {
+      name: typeof customerData.name === "string" ? customerData.name : "Unknown customer",
+      email: typeof customerData.email === "string" ? customerData.email : "-",
+    },
+  };
 };
 
 export default function AdminDashboardPage() {
@@ -57,15 +83,35 @@ export default function AdminDashboardPage() {
     ])
       .then(([items, summary, stats, orders]) => {
         if (!active) return;
-        setProfitItems(items);
-        setProfitSummary(summary.data ?? []);
+        const safeProfitItems = asArray<ProfitOrderItem>(items);
+        const safeProfitSummary = asArray<ProfitSummaryBucket>(
+          summary && typeof summary === "object" ? (summary as { data?: unknown }).data : [],
+        );
+        const safeOrders = asArray<unknown>(orders)
+          .map(sanitizeOrder)
+          .filter((value): value is AdminOrder => Boolean(value));
+
+        setProfitItems(safeProfitItems);
+        setProfitSummary(safeProfitSummary);
         setOrderStats({
-          totalOrders: stats.totalOrders ?? 0,
-          totalRevenue: stats.totalRevenue ?? 0,
-          pending: stats.pending ?? 0,
-          delivered: stats.delivered ?? 0,
+          totalOrders:
+            stats && typeof stats === "object" && typeof (stats as { totalOrders?: unknown }).totalOrders === "number"
+              ? ((stats as { totalOrders: number }).totalOrders)
+              : 0,
+          totalRevenue:
+            stats && typeof stats === "object" && typeof (stats as { totalRevenue?: unknown }).totalRevenue === "number"
+              ? ((stats as { totalRevenue: number }).totalRevenue)
+              : 0,
+          pending:
+            stats && typeof stats === "object" && typeof (stats as { pending?: unknown }).pending === "number"
+              ? ((stats as { pending: number }).pending)
+              : 0,
+          delivered:
+            stats && typeof stats === "object" && typeof (stats as { delivered?: unknown }).delivered === "number"
+              ? ((stats as { delivered: number }).delivered)
+              : 0,
         });
-        setRecentOrders((orders ?? []).slice(0, 5));
+        setRecentOrders(safeOrders.slice(0, 5));
         setProfitStatus({ loading: false, error: "" });
       })
       .catch((error) => {
@@ -83,7 +129,19 @@ export default function AdminDashboardPage() {
     adminFetchLowStock()
       .then((data) => {
         if (!active) return;
-        setLowStock(data);
+        const payload = data as { variantSizes?: unknown; products?: unknown } | undefined;
+        setLowStock({
+          variantSizes: asArray<{
+            id: string;
+            stock: number;
+            sizeUS?: string;
+            sizeEU?: string;
+            color: string;
+            productId: string;
+            productName: string;
+          }>(payload?.variantSizes),
+          products: asArray<{ id: string; stock: number; name: string }>(payload?.products),
+        });
         setLowStockStatus({ loading: false, error: "" });
       })
       .catch((error) => {
