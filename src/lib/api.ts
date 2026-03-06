@@ -50,6 +50,101 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
+const PUBLIC_CACHE_PREFIX = "thrifty_public_cache:";
+const publicCache = new Map<string, { expiresAt: number; data: unknown }>();
+const inFlightPublicRequests = new Map<string, Promise<unknown>>();
+
+const readPublicCache = <T>(key: string): T | undefined => {
+  const memoryEntry = publicCache.get(key);
+  if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+    return memoryEntry.data as T;
+  }
+
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  const raw = window.sessionStorage.getItem(`${PUBLIC_CACHE_PREFIX}${key}`);
+  if (!raw) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { expiresAt: number; data: T };
+    if (parsed.expiresAt <= Date.now()) {
+      window.sessionStorage.removeItem(`${PUBLIC_CACHE_PREFIX}${key}`);
+      return undefined;
+    }
+    publicCache.set(key, parsed);
+    return parsed.data;
+  } catch {
+    window.sessionStorage.removeItem(`${PUBLIC_CACHE_PREFIX}${key}`);
+    return undefined;
+  }
+};
+
+const writePublicCache = <T>(key: string, data: T, ttlMs: number) => {
+  const entry = {
+    expiresAt: Date.now() + ttlMs,
+    data,
+  };
+  publicCache.set(key, entry);
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage.setItem(`${PUBLIC_CACHE_PREFIX}${key}`, JSON.stringify(entry));
+    } catch {
+      // ignore cache write failures
+    }
+  }
+};
+
+const clearPublicCacheByPrefix = (prefix: string) => {
+  for (const key of publicCache.keys()) {
+    if (key.startsWith(prefix)) {
+      publicCache.delete(key);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    const storageKeys: string[] = [];
+    for (let index = 0; index < window.sessionStorage.length; index += 1) {
+      const key = window.sessionStorage.key(index);
+      if (key?.startsWith(`${PUBLIC_CACHE_PREFIX}${prefix}`)) {
+        storageKeys.push(key);
+      }
+    }
+    storageKeys.forEach((key) => window.sessionStorage.removeItem(key));
+  }
+};
+
+const getCachedPublicData = async <T>(
+  key: string,
+  ttlMs: number,
+  loader: () => Promise<T>,
+): Promise<T> => {
+  const cached = readPublicCache<T>(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const existing = inFlightPublicRequests.get(key);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+
+  const request = loader()
+    .then((data) => {
+      writePublicCache(key, data, ttlMs);
+      return data;
+    })
+    .finally(() => {
+      inFlightPublicRequests.delete(key);
+    });
+
+  inFlightPublicRequests.set(key, request);
+  return request;
+};
+
 const buildUploadHeaders = () => {
   const headers = new Headers();
   if (typeof window === "undefined") return headers;
@@ -163,25 +258,42 @@ export const handleApiError = (error: unknown): string => {
 export const fetchProducts = async (
   params?: Record<string, string | number | boolean | undefined>,
 ): Promise<PaginatedResponse<Product>> => {
-  const { data } = await apiClient.get("/products", { params });
-  return data;
+  const query = new URLSearchParams();
+  Object.entries(params ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+  const cacheKey = `products:list:${query.toString() || "default"}`;
+  return getCachedPublicData(cacheKey, 60_000, async () => {
+    const { data } = await apiClient.get("/products", { params });
+    return data;
+  });
 };
 
 export const fetchFeaturedProducts = async (): Promise<Product[]> => {
-  const { data } = await apiClient.get("/products", {
-    params: { featured: true, limit: 8 },
+  const response = await getCachedPublicData("products:featured", 60_000, async () => {
+    const { data } = await apiClient.get("/products", {
+      params: { featured: true, limit: 8 },
+    });
+    return data;
   });
-  return data?.data ?? data;
+  return response?.data ?? response;
 };
 
 export const fetchProductBySlug = async (slug: string): Promise<Product> => {
-  const { data } = await apiClient.get(`/products/${slug}`);
-  return data;
+  return getCachedPublicData(`products:detail:${slug}`, 120_000, async () => {
+    const { data } = await apiClient.get(`/products/${slug}`);
+    return data;
+  });
 };
 
 export const fetchCategories = async (): Promise<Category[]> => {
-  const { data } = await apiClient.get("/categories");
-  return data?.data ?? data;
+  const response = await getCachedPublicData("categories:all", 5 * 60_000, async () => {
+    const { data } = await apiClient.get("/categories");
+    return data;
+  });
+  return response?.data ?? response;
 };
 
 export const authenticate = async (payload: {
@@ -377,12 +489,15 @@ export const updatePaymentSettings = async (payload: {
 };
 
 export const fetchMarketingSettings = async (): Promise<MarketingSettings> => {
-  const { data } = await apiClient.get("/settings/marketing");
-  return data;
+  return getCachedPublicData("settings:marketing", 5 * 60_000, async () => {
+    const { data } = await apiClient.get("/settings/marketing");
+    return data;
+  });
 };
 
 export const updateMarketingSettings = async (payload: MarketingSettings) => {
   const { data } = await apiClient.patch("/settings/marketing", payload);
+  clearPublicCacheByPrefix("settings:marketing");
   return data;
 };
 
@@ -430,6 +545,9 @@ export const adminCreateProduct = async (payload: Partial<Product>) => {
 
 export const adminUpdateStock = async (productId: string, stock: number) => {
   const { data } = await apiClient.patch(`/admin/products/${productId}/stock`, { stock });
+  clearPublicCacheByPrefix("products:list:");
+  clearPublicCacheByPrefix("products:featured");
+  clearPublicCacheByPrefix("products:detail:");
   return data;
 };
 
@@ -437,6 +555,9 @@ export const adminUpdateDiscount = async (productId: string, discount: number) =
   const { data } = await apiClient.patch(`/admin/products/${productId}/discount`, {
     discount,
   });
+  clearPublicCacheByPrefix("products:list:");
+  clearPublicCacheByPrefix("products:featured");
+  clearPublicCacheByPrefix("products:detail:");
   return data;
 };
 
@@ -464,6 +585,8 @@ export const adminCreateFullProduct = async (payload: {
   }[];
 }): Promise<AdminProduct> => {
   const { data } = await apiClient.post("/admin/products", payload);
+  clearPublicCacheByPrefix("products:list:");
+  clearPublicCacheByPrefix("products:featured");
   return data;
 };
 
@@ -490,11 +613,17 @@ export const adminUpdateProduct = async (
   }>,
 ): Promise<AdminProduct> => {
   const { data } = await apiClient.patch(`/admin/products/${productId}`, payload);
+  clearPublicCacheByPrefix("products:list:");
+  clearPublicCacheByPrefix("products:featured");
+  clearPublicCacheByPrefix("products:detail:");
   return data;
 };
 
 export const adminDeleteProduct = async (productId: string) => {
   await apiClient.delete(`/admin/products/${productId}`);
+  clearPublicCacheByPrefix("products:list:");
+  clearPublicCacheByPrefix("products:featured");
+  clearPublicCacheByPrefix("products:detail:");
 };
 
 export const adminFetchProfitOrders = async (params?: {

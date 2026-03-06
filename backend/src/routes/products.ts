@@ -1,8 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { Router } from "express";
 import prisma from "../prisma";
+import {
+  getCachedResponse,
+  setCachedResponse,
+} from "../lib/response-cache";
 
 const router = Router();
+const PRODUCT_LIST_TTL_MS = 60 * 1000;
+const PRODUCT_DETAIL_TTL_MS = 2 * 60 * 1000;
 
 const normalizeImages = (images: unknown): { url: string; alt?: string }[] => {
   if (!images) return [];
@@ -73,6 +79,27 @@ router.get("/", async (req, res, next) => {
     if (sort === "price_asc") orderBy = { sellPrice: "asc" };
     if (sort === "price_desc") orderBy = { sellPrice: "desc" };
 
+    const cacheKey = `products:list:${JSON.stringify({
+      featured,
+      limit,
+      page,
+      category,
+      condition,
+      gender,
+      size,
+      color,
+      minPrice,
+      maxPrice,
+      exclude,
+      sort,
+      q,
+    })}`;
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=180");
+    const cached = getCachedResponse<unknown>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const [total, products] = await Promise.all([
       prisma.product.count({ where }),
       prisma.product.findMany({
@@ -80,29 +107,27 @@ router.get("/", async (req, res, next) => {
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        description: true,
-        sellPrice: true,
-        discount: true,
-        condition: true,
-        gender: true,
-        sizes: true,
-        tags: true,
-        metadata: true,
-        stock: true,
-        active: true,
-        featured: true,
-        images: true,
-        category: { select: { id: true, name: true } },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          description: true,
+          sellPrice: true,
+          discount: true,
+          condition: true,
+          gender: true,
+          sizes: true,
+          tags: true,
+          metadata: true,
+          stock: true,
+          active: true,
+          featured: true,
+          images: true,
+          category: { select: { id: true, name: true } },
           variants: {
             select: {
               id: true,
               color: true,
-              priceOverride: true,
-              images: true,
               sizes: {
                 select: { id: true, sizeUS: true, sizeEU: true, stock: true },
               },
@@ -112,10 +137,8 @@ router.get("/", async (req, res, next) => {
       }),
     ]);
 
-    res.json({
+    const payload = {
       data: products.map((product) => {
-        const firstVariant = product.variants[0];
-        const variantImages = normalizeImages(firstVariant?.images);
         const productImages = normalizeImages(product.images);
         return {
           id: product.id,
@@ -129,7 +152,7 @@ router.get("/", async (req, res, next) => {
           stock: product.stock,
           active: product.active,
           featured: product.featured,
-          images: variantImages.length ? variantImages : productImages,
+          images: productImages,
           sizes: (product.sizes as string[]) ?? undefined,
           tags: (product.tags as string[]) ?? undefined,
           metadata:
@@ -140,8 +163,7 @@ router.get("/", async (req, res, next) => {
           variants: product.variants.map((variant) => ({
             id: variant.id,
             color: variant.color,
-            priceOverride: variant.priceOverride ?? undefined,
-            images: (variant.images as { url: string; alt?: string }[]) ?? [],
+            images: [],
             sizes: variant.sizes,
           })),
         };
@@ -149,7 +171,10 @@ router.get("/", async (req, res, next) => {
       page,
       limit,
       total,
-    });
+    };
+
+    setCachedResponse(cacheKey, payload, PRODUCT_LIST_TTL_MS);
+    res.json(payload);
   } catch (error) {
     next(error);
   }
@@ -157,6 +182,13 @@ router.get("/", async (req, res, next) => {
 
 router.get("/:slug", async (req, res, next) => {
   try {
+    const cacheKey = `products:detail:${req.params.slug}`;
+    res.set("Cache-Control", "public, max-age=120, stale-while-revalidate=300");
+    const cached = getCachedResponse<unknown>(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const product = await prisma.product.findFirst({
       where: { slug: req.params.slug, active: true },
       select: {
@@ -197,7 +229,7 @@ router.get("/:slug", async (req, res, next) => {
     const variantImages = normalizeImages(product.variants[0]?.images);
     const productImages = normalizeImages(product.images);
 
-    return res.json({
+    const payload = {
       id: product.id,
       slug: product.slug,
       name: product.name,
@@ -224,7 +256,10 @@ router.get("/:slug", async (req, res, next) => {
         images: (variant.images as { url: string; alt?: string }[]) ?? [],
         sizes: variant.sizes,
       })),
-    });
+    };
+
+    setCachedResponse(cacheKey, payload, PRODUCT_DETAIL_TTL_MS);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

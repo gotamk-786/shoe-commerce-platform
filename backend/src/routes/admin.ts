@@ -3,8 +3,14 @@ import { z } from "zod";
 import prisma from "../prisma";
 import { requireAdmin } from "../middleware/auth";
 import { requireUser } from "../middleware/jwt-auth";
+import { clearCachedResponseByPrefix } from "../lib/response-cache";
 
 const router = Router();
+
+const clearProductCaches = () => {
+  clearCachedResponseByPrefix("products:list:");
+  clearCachedResponseByPrefix("products:detail:");
+};
 
 router.use(requireUser, requireAdmin);
 
@@ -159,6 +165,7 @@ router.post("/products", async (req, res, next) => {
       },
     });
 
+    clearProductCaches();
     res.status(201).json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -218,6 +225,7 @@ router.patch("/products/:id", async (req, res, next) => {
       },
     });
 
+    clearProductCaches();
     res.json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -234,6 +242,7 @@ router.patch("/products/:id/stock", async (req, res, next) => {
       where: { id: req.params.id },
       data: { stock: payload.stock },
     });
+    clearProductCaches();
     res.json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -250,6 +259,7 @@ router.patch("/products/:id/discount", async (req, res, next) => {
       where: { id: req.params.id },
       data: { discount: payload.discount },
     });
+    clearProductCaches();
     res.json(product);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -262,6 +272,7 @@ router.patch("/products/:id/discount", async (req, res, next) => {
 router.delete("/products/:id", async (req, res, next) => {
   try {
     await prisma.product.delete({ where: { id: req.params.id } });
+    clearProductCaches();
     return res.status(204).send();
   } catch (error) {
     return next(error);

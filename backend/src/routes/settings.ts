@@ -2,8 +2,15 @@ import { Router } from "express";
 import { z } from "zod";
 import prisma from "../prisma";
 import { requireAdmin } from "../middleware/auth";
+import {
+  clearCachedResponse,
+  getCachedResponse,
+  setCachedResponse,
+} from "../lib/response-cache";
 
 const router = Router();
+const MARKETING_CACHE_KEY = "settings:marketing";
+const MARKETING_TTL_MS = 5 * 60 * 1000;
 
 const paymentSchema = z.object({
   paymentRequired: z.boolean(),
@@ -178,12 +185,21 @@ router.patch("/payment", requireAdmin, async (req, res, next) => {
 
 router.get("/marketing", async (_req, res, next) => {
   try {
+    res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=900");
+    const cached = getCachedResponse<unknown>(MARKETING_CACHE_KEY);
+    if (cached) {
+      return res.json(cached);
+    }
+
     const raw = await getSetting("marketingHome", "");
     if (!raw) {
+      setCachedResponse(MARKETING_CACHE_KEY, defaultMarketing, MARKETING_TTL_MS);
       return res.json(defaultMarketing);
     }
     const parsed = JSON.parse(raw);
-    return res.json(marketingSchema.parse(parsed));
+    const payload = marketingSchema.parse(parsed);
+    setCachedResponse(MARKETING_CACHE_KEY, payload, MARKETING_TTL_MS);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -193,6 +209,7 @@ router.patch("/marketing", requireAdmin, async (req, res, next) => {
   try {
     const payload = marketingSchema.parse(req.body);
     await setSetting("marketingHome", JSON.stringify(payload));
+    clearCachedResponse(MARKETING_CACHE_KEY);
     return res.json(payload);
   } catch (error) {
     if (error instanceof z.ZodError) {
