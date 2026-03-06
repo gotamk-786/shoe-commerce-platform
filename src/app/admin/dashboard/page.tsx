@@ -75,14 +75,15 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([
-      adminFetchProfitOrders(),
-      adminFetchProfitSummary({ period: "daily" }),
-      fetchOrderStats(),
-      adminFetchOrders(),
-    ])
-      .then(([items, summary, stats, orders]) => {
+    const load = async () => {
+      try {
+        // Keep requests sequential to avoid saturating low connection-limit pools.
+        const items = await adminFetchProfitOrders();
+        const summary = await adminFetchProfitSummary({ period: "daily" });
+        const stats = await fetchOrderStats();
+        const orders = await adminFetchOrders();
         if (!active) return;
+
         const safeProfitItems = asArray<ProfitOrderItem>(items);
         const safeProfitSummary = asArray<ProfitSummaryBucket>(
           summary && typeof summary === "object" ? (summary as { data?: unknown }).data : [],
@@ -113,21 +114,13 @@ export default function AdminDashboardPage() {
         });
         setRecentOrders(safeOrders.slice(0, 5));
         setProfitStatus({ loading: false, error: "" });
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!active) return;
         setProfitStatus({ loading: false, error: handleApiError(error) });
-      });
+      }
 
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    adminFetchLowStock()
-      .then((data) => {
+      try {
+        const data = await adminFetchLowStock();
         if (!active) return;
         const payload = data as { variantSizes?: unknown; products?: unknown } | undefined;
         setLowStock({
@@ -143,11 +136,14 @@ export default function AdminDashboardPage() {
           products: asArray<{ id: string; stock: number; name: string }>(payload?.products),
         });
         setLowStockStatus({ loading: false, error: "" });
-      })
-      .catch((error) => {
+      } catch (error) {
         if (!active) return;
         setLowStockStatus({ loading: false, error: handleApiError(error) });
-      });
+      }
+    };
+
+    load();
+
     return () => {
       active = false;
     };

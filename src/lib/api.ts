@@ -50,6 +50,67 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
+const buildUploadHeaders = () => {
+  const headers = new Headers();
+  if (typeof window === "undefined") return headers;
+
+  const token = localStorage.getItem("thrifty_token");
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const adminBypass = process.env.NEXT_PUBLIC_ADMIN_BYPASS;
+  if (adminBypass) {
+    headers.set("x-admin-bypass", adminBypass);
+  }
+
+  return headers;
+};
+
+const uploadMultipartImage = async (
+  path: string,
+  file: File,
+): Promise<{ url: string; publicId: string }> => {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  const response = await fetch(`${baseURL}${path}`, {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+    headers: buildUploadHeaders(),
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json")
+    ? await response.json()
+    : { message: await response.text() };
+
+  if (!response.ok) {
+    const message =
+      payload && typeof payload === "object" && "message" in payload
+        ? String(payload.message)
+        : `Upload failed with status ${response.status}.`;
+    throw new Error(message);
+  }
+
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("url" in payload) ||
+    !("publicId" in payload) ||
+    typeof payload.url !== "string" ||
+    typeof payload.publicId !== "string"
+  ) {
+    throw new Error("Upload succeeded but server response was invalid.");
+  }
+
+  return {
+    url: payload.url,
+    publicId: payload.publicId,
+  };
+};
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("thrifty_token");
@@ -84,6 +145,17 @@ export const handleApiError = (error: unknown): string => {
 
     const fallback = "We hit a snag while talking to the server.";
     return rawMessage || error.message || fallback;
+  }
+  if (error instanceof Error) {
+    const normalizedMessage = error.message.trim().toLowerCase();
+    if (
+      normalizedMessage.includes("failed to fetch") ||
+      normalizedMessage.includes("network") ||
+      normalizedMessage.includes("load failed")
+    ) {
+      return "Network issue while contacting server. Please try again.";
+    }
+    return error.message || "Unexpected error. Please try again.";
   }
   return "Unexpected error. Please try again.";
 };
@@ -582,10 +654,7 @@ export const adminDeleteCoupon = async (couponId: string) => {
 };
 
 export const adminUploadImage = async (file: File): Promise<{ url: string; publicId: string }> => {
-  const formData = new FormData();
-  formData.append("image", file);
-  const { data } = await apiClient.post("/admin/uploads", formData);
-  return data;
+  return uploadMultipartImage("/admin/uploads", file);
 };
 
 export const adminUploadAsset = async (file: File): Promise<{ url: string; publicId: string }> => {
@@ -593,8 +662,5 @@ export const adminUploadAsset = async (file: File): Promise<{ url: string; publi
 };
 
 export const uploadAvatar = async (file: File): Promise<{ url: string; publicId: string }> => {
-  const formData = new FormData();
-  formData.append("image", file);
-  const { data } = await apiClient.post("/uploads", formData);
-  return data;
+  return uploadMultipartImage("/uploads", file);
 };

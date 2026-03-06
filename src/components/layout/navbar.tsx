@@ -107,7 +107,7 @@ export default function Navbar() {
     { href: "/collection", label: "Collection" },
     { href: "/wishlist", label: "Wishlist" },
     { href: "/account", label: "Account" },
-    ...(isAdmin ? [{ href: "/admin", label: "Admin Panel" }] : []),
+    ...(isAdmin ? [{ href: "/admin/dashboard", label: "Admin Panel" }] : []),
   ];
 
   const isLinkActive = (href: string) => {

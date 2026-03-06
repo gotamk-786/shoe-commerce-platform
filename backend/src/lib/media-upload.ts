@@ -1,8 +1,10 @@
 import { v2 as cloudinary } from "cloudinary";
 
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-const apiKey = process.env.CLOUDINARY_API_KEY;
-const apiSecret = process.env.CLOUDINARY_API_SECRET;
+const cleanEnv = (value?: string) => value?.trim().replace(/^['"]|['"]$/g, "");
+
+const cloudName = cleanEnv(process.env.CLOUDINARY_CLOUD_NAME);
+const apiKey = cleanEnv(process.env.CLOUDINARY_API_KEY);
+const apiSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET);
 
 cloudinary.config({
   cloud_name: cloudName,
@@ -50,4 +52,3 @@ export const uploadBufferToCloudinary = async ({
 
   return { url: result.secure_url, publicId: result.public_id };
 };
-
