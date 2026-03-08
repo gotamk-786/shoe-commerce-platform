@@ -12,6 +12,7 @@ import Button from "../ui/button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCompare, removeFromCompare } from "@/store/slices/compare-slice";
 import { fetchProductBySlug } from "@/lib/api";
+import { writeProductPreview } from "@/lib/product-preview-cache";
 
 export default function ProductCard({ product }: { product: Product }) {
   const router = useRouter();
@@ -25,8 +26,9 @@ export default function ProductCard({ product }: { product: Product }) {
 
   useEffect(() => {
     router.prefetch(productHref);
+    writeProductPreview(product);
     void fetchProductBySlug(product.slug).catch(() => undefined);
-  }, [product.slug, productHref, router]);
+  }, [product, product.slug, productHref, router]);
 
   return (
     <motion.article
@@ -40,11 +42,16 @@ export default function ProductCard({ product }: { product: Product }) {
         prefetch
         onMouseEnter={() => {
           router.prefetch(productHref);
+          writeProductPreview(product);
           void fetchProductBySlug(product.slug).catch(() => undefined);
         }}
         onTouchStart={() => {
           router.prefetch(productHref);
+          writeProductPreview(product);
           void fetchProductBySlug(product.slug).catch(() => undefined);
+        }}
+        onClick={() => {
+          writeProductPreview(product);
         }}
       >
         <div className="relative h-72 overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100">

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Skeleton from "@/components/ui/skeleton";
 import { Product, ReviewSummary } from "@/lib/types";
 import {
   fetchProductBySlug,
@@ -10,22 +9,30 @@ import {
   fetchReviews,
   handleApiError,
 } from "@/lib/api";
+import { readProductPreview } from "@/lib/product-preview-cache";
 import ProductDetailClient from "./product-detail-client";
 
 export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
-  const [product, setProduct] = useState<Product | null>(null);
+  const initialPreview = readProductPreview(params.slug);
+  const [product, setProduct] = useState<Product | null>(initialPreview);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [reviews, setReviews] = useState<ReviewSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialPreview);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
+    const preview = readProductPreview(params.slug);
 
     const load = async () => {
       try {
-        setLoading(true);
+        if (preview) {
+          setProduct(preview);
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
         setError("");
         const data = await fetchProductBySlug(params.slug);
         if (!active) {
@@ -72,14 +79,7 @@ export default function ProductDetailPage() {
   }, [params.slug]);
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        <div className="grid gap-10 md:grid-cols-2">
-          <Skeleton className="h-[420px] rounded-3xl" />
-          <Skeleton className="h-[420px] rounded-3xl" />
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
