@@ -23,12 +23,6 @@ import {
   createAddress,
   updateAddress,
   deleteAddress,
-  fetchPaymentMethods,
-  createPaymentMethod,
-  updatePaymentMethod,
-  deletePaymentMethod,
-  fetchNotifications,
-  updateNotifications,
   changePassword,
   downloadInvoice,
   fetchReturns,
@@ -40,9 +34,7 @@ import {
 } from "@/lib/api";
 import {
   Address,
-  NotificationPreference,
   Order,
-  PaymentMethod,
   Product,
   UserProfile,
 } from "@/lib/types";
@@ -50,21 +42,14 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout, updateProfile as updateProfileAction } from "@/store/slices/user-slice";
 import { cn } from "@/lib/utils";
 
-type AccountSection = "profile" | "orders" | "addresses" | "payments" | "security";
+type AccountSection = "profile" | "orders" | "addresses" | "security";
 
 const accountSections: { id: AccountSection; label: string; hint: string }[] = [
   { id: "profile", label: "Profile", hint: "Personal info" },
   { id: "orders", label: "Orders", hint: "Orders & returns" },
   { id: "addresses", label: "Addresses", hint: "Shipping places" },
-  { id: "payments", label: "Payments", hint: "Payment & alerts" },
   { id: "security", label: "Security", hint: "Password & 2FA" },
 ];
-
-const defaultNotifications: NotificationPreference = {
-  emailEnabled: true,
-  smsEnabled: false,
-  phone: "",
-};
 
 export default function AccountPage() {
   const router = useRouter();
@@ -83,8 +68,6 @@ export default function AccountPage() {
   const [coverUrl, setCoverUrl] = useState(persistedProfile?.coverUrl ?? "");
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [notifications, setNotifications] = useState<NotificationPreference>(defaultNotifications);
   const [addressForm, setAddressForm] = useState<Omit<Address, "id">>({
     label: "",
     street: "",
@@ -96,13 +79,6 @@ export default function AccountPage() {
     isDefault: false,
   });
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
-  const [paymentForm, setPaymentForm] = useState<Omit<PaymentMethod, "id">>({
-    provider: "easypaisa",
-    label: "",
-    maskedNumber: "",
-    isDefault: false,
-  });
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -125,7 +101,6 @@ export default function AccountPage() {
   const [activeAccountSection, setActiveAccountSection] = useState<AccountSection>("profile");
   const [sectionLoaded, setSectionLoaded] = useState({
     addresses: false,
-    payments: false,
     ordersExtras: false,
   });
   const totalSpend = orders.reduce((sum, order) => sum + order.total, 0);
@@ -136,10 +111,9 @@ export default function AccountPage() {
     Boolean(avatarUrl),
     Boolean(coverUrl),
     addresses.length > 0,
-    paymentMethods.length > 0,
     twoFactorEnabled,
   ].filter(Boolean).length;
-  const completionPercent = Math.round((completionScore / 7) * 100);
+  const completionPercent = Math.round((completionScore / 6) * 100);
   const initials =
     profile?.name
       ?.split(" ")
@@ -213,17 +187,6 @@ export default function AccountPage() {
           setSectionLoaded((prev) => ({ ...prev, addresses: true }));
         }
 
-        if (activeAccountSection === "payments" && !sectionLoaded.payments) {
-          const [paymentData, notificationData] = await Promise.all([
-            fetchPaymentMethods(),
-            fetchNotifications(),
-          ]);
-          if (!active) return;
-          setPaymentMethods(paymentData || []);
-          setNotifications(notificationData || defaultNotifications);
-          setSectionLoaded((prev) => ({ ...prev, payments: true }));
-        }
-
         if (activeAccountSection === "orders" && !sectionLoaded.ordersExtras) {
           const [returnData, activityData] = await Promise.all([
             fetchReturns(),
@@ -250,7 +213,6 @@ export default function AccountPage() {
     activeAccountSection,
     sectionLoaded.addresses,
     sectionLoaded.ordersExtras,
-    sectionLoaded.payments,
     token,
   ]);
 
@@ -798,191 +760,6 @@ export default function AccountPage() {
               </Button>
             </div>
           </div>
-        </div>
-
-        <div
-          className={cn(
-            "self-start rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
-            isSectionOpen("payments") ? "block" : "hidden",
-          )}
-        >
-          <button
-            type="button"
-            onClick={() => setActiveAccountSection("payments")}
-            className="flex w-full items-center justify-between text-left md:hidden"
-          >
-            <span className="text-lg font-semibold text-gray-900">Payment methods</span>
-            <span className="text-sm text-gray-500">{isSectionOpen("payments") ? "Open" : "Tap to open"}</span>
-          </button>
-          <div className={cn("space-y-4", isSectionOpen("payments") ? "block" : "hidden")}>
-            <h3 className="hidden text-lg font-semibold text-gray-900 md:block">Payment methods</h3>
-            <div className="space-y-2 text-sm text-gray-600">
-            {paymentMethods.length === 0 && <p>No payment methods saved.</p>}
-            {paymentMethods.map((method) => (
-              <div
-                key={method.id}
-                className="rounded-2xl border border-black/10 px-4 py-3"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-gray-900">{method.label}</p>
-                  {method.isDefault && (
-                    <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                      Default
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500">
-                  {method.provider} • {method.maskedNumber}
-                </p>
-                <div className="mt-2 flex gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setEditingPaymentId(method.id);
-                      setPaymentForm({
-                        provider: method.provider,
-                        label: method.label,
-                        maskedNumber: method.maskedNumber,
-                        isDefault: method.isDefault,
-                      });
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      await deletePaymentMethod(method.id);
-                      setPaymentMethods((prev) => prev.filter((item) => item.id !== method.id));
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            ))}
-            </div>
-            <div className="space-y-3 pt-2">
-              <label className="flex w-full flex-col gap-2 text-sm text-gray-700">
-                <span className="text-sm font-medium text-gray-900">Provider</span>
-                <select
-                  value={paymentForm.provider}
-                  onChange={(e) => setPaymentForm((prev) => ({ ...prev, provider: e.target.value }))}
-                  className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-900 shadow-[0_12px_40px_rgba(12,22,44,0.06)] outline-none"
-                >
-                  <option value="easypaisa">EasyPaisa</option>
-                  <option value="jazzcash">JazzCash</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
-              </label>
-              <Input
-                label="Label"
-                value={paymentForm.label}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, label: e.target.value }))}
-              />
-              <Input
-                label="Masked number"
-                placeholder="**** 1234"
-                value={paymentForm.maskedNumber}
-                onChange={(e) => setPaymentForm((prev) => ({ ...prev, maskedNumber: e.target.value }))}
-              />
-              <label className="flex items-center gap-2 text-sm text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={paymentForm.isDefault}
-                  onChange={(e) =>
-                    setPaymentForm((prev) => ({ ...prev, isDefault: e.target.checked }))
-                  }
-                />
-                Set as default
-              </label>
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  try {
-                    if (editingPaymentId) {
-                      await updatePaymentMethod(editingPaymentId, paymentForm);
-                      setEditingPaymentId(null);
-                    } else {
-                      await createPaymentMethod(paymentForm);
-                    }
-                    const refreshed = await fetchPaymentMethods();
-                    setPaymentMethods(refreshed);
-                    setPaymentForm({
-                      provider: "easypaisa",
-                      label: "",
-                      maskedNumber: "",
-                      isDefault: false,
-                    });
-                  } catch (err) {
-                    setError(handleApiError(err));
-                  }
-                }}
-              >
-                {editingPaymentId ? "Update method" : "Add method"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            "self-start space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]",
-            isSectionOpen("payments") ? "block" : "hidden",
-          )}
-        >
-          <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-          <label className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 text-sm">
-            <span>Email updates</span>
-            <input
-              type="checkbox"
-              checked={notifications.emailEnabled}
-              onChange={async (e) => {
-                const next = { ...notifications, emailEnabled: e.target.checked };
-                setNotifications(next);
-                try {
-                  await updateNotifications(next);
-                } catch (err) {
-                  setError(handleApiError(err));
-                }
-              }}
-            />
-          </label>
-          <label className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 text-sm">
-            <span>SMS updates</span>
-            <input
-              type="checkbox"
-              checked={notifications.smsEnabled}
-              onChange={async (e) => {
-                const next = { ...notifications, smsEnabled: e.target.checked };
-                setNotifications(next);
-                try {
-                  await updateNotifications(next);
-                } catch (err) {
-                  setError(handleApiError(err));
-                }
-              }}
-            />
-          </label>
-          <Input
-            label="SMS phone"
-            placeholder="+92..."
-            value={notifications.phone || ""}
-            onChange={(e) => setNotifications((prev) => ({ ...prev, phone: e.target.value }))}
-          />
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              try {
-                const updated = await updateNotifications(notifications);
-                setNotifications(updated);
-              } catch (err) {
-                setError(handleApiError(err));
-              }
-            }}
-          >
-            Save preferences
-          </Button>
         </div>
       </div>
 
