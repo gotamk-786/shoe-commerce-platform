@@ -79,6 +79,12 @@ export default function AccountPage() {
     isDefault: false,
   });
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addressStatus, setAddressStatus] = useState<{
+    saving: boolean;
+    deletingId?: string;
+  }>({
+    saving: false,
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -241,6 +247,63 @@ export default function AccountPage() {
       setError(handleApiError(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const resetAddressForm = () => {
+    setAddressForm({
+      label: "",
+      street: "",
+      city: "",
+      state: "",
+      zip: "",
+      country: "",
+      phone: "",
+      isDefault: false,
+    });
+    setEditingAddressId(null);
+  };
+
+  const handleAddressSave = async () => {
+    if (addressStatus.saving) {
+      return;
+    }
+
+    try {
+      setAddressStatus({ saving: true });
+
+      if (editingAddressId) {
+        await updateAddress(editingAddressId, addressForm);
+      } else {
+        await createAddress(addressForm);
+      }
+
+      const refreshed = await fetchAddresses();
+      setAddresses(refreshed);
+      resetAddressForm();
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setAddressStatus({ saving: false });
+    }
+  };
+
+  const handleAddressDelete = async (addressId: string) => {
+    if (addressStatus.deletingId || addressStatus.saving) {
+      return;
+    }
+
+    try {
+      setAddressStatus({ saving: false, deletingId: addressId });
+      await deleteAddress(addressId);
+      setAddresses((prev) => prev.filter((item) => item.id !== addressId));
+      if (editingAddressId === addressId) {
+        resetAddressForm();
+      }
+    } catch (err) {
+      setError(handleApiError(err));
+    } finally {
+      setAddressStatus({ saving: false });
     }
   };
 
@@ -651,6 +714,9 @@ export default function AccountPage() {
                   <Button
                     variant="ghost"
                     onClick={() => {
+                      if (addressStatus.saving || addressStatus.deletingId) {
+                        return;
+                      }
                       setEditingAddressId(address.id);
                       setAddressForm({
                         label: address.label,
@@ -663,17 +729,16 @@ export default function AccountPage() {
                         isDefault: address.isDefault,
                       });
                     }}
+                    disabled={addressStatus.saving || Boolean(addressStatus.deletingId)}
                   >
                     Edit
                   </Button>
                   <Button
                     variant="ghost"
-                    onClick={async () => {
-                      await deleteAddress(address.id);
-                      setAddresses((prev) => prev.filter((item) => item.id !== address.id));
-                    }}
+                    onClick={() => void handleAddressDelete(address.id)}
+                    disabled={addressStatus.saving || Boolean(addressStatus.deletingId)}
                   >
-                    Delete
+                    {addressStatus.deletingId === address.id ? "Deleting..." : "Delete"}
                   </Button>
                 </div>
               </div>
@@ -731,33 +796,26 @@ export default function AccountPage() {
               </label>
               <Button
                 variant="primary"
-                onClick={async () => {
-                  try {
-                    if (editingAddressId) {
-                      await updateAddress(editingAddressId, addressForm);
-                      setEditingAddressId(null);
-                    } else {
-                      await createAddress(addressForm);
-                    }
-                    const refreshed = await fetchAddresses();
-                    setAddresses(refreshed);
-                    setAddressForm({
-                      label: "",
-                      street: "",
-                      city: "",
-                      state: "",
-                      zip: "",
-                      country: "",
-                      phone: "",
-                      isDefault: false,
-                    });
-                  } catch (err) {
-                    setError(handleApiError(err));
-                  }
-                }}
+                onClick={() => void handleAddressSave()}
+                disabled={addressStatus.saving || Boolean(addressStatus.deletingId)}
               >
-                {editingAddressId ? "Update address" : "Add address"}
+                {addressStatus.saving
+                  ? editingAddressId
+                    ? "Updating..."
+                    : "Adding..."
+                  : editingAddressId
+                    ? "Update address"
+                    : "Add address"}
               </Button>
+              {editingAddressId && (
+                <Button
+                  variant="ghost"
+                  onClick={resetAddressForm}
+                  disabled={addressStatus.saving || Boolean(addressStatus.deletingId)}
+                >
+                  Cancel edit
+                </Button>
+              )}
             </div>
           </div>
         </div>
