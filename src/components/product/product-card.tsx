@@ -70,12 +70,12 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
           <div className="absolute right-3 top-3 flex flex-col gap-2">
             {product.discount ? (
-              <Pill className="border-0 bg-rose-600 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_30px_rgba(225,29,72,0.28)]">
+              <Pill className="border border-rose-700/20 bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-white shadow-[0_14px_32px_rgba(225,29,72,0.34)]">
                 {product.discount}% off
               </Pill>
             ) : null}
             {product.condition && (
-              <Pill className="border border-black/10 bg-white px-3 py-1 font-semibold uppercase tracking-[0.2em] text-gray-900 shadow-sm">
+              <Pill className="border border-black/10 bg-white/95 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-gray-900 shadow-sm backdrop-blur">
                 {product.condition}
               </Pill>
             )}

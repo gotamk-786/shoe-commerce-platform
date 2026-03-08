@@ -59,33 +59,43 @@ export default function ProductDetailClient({
 
     const hydratePage = async () => {
       try {
-        if (relatedProducts.length === 0) {
+        const shouldLoadRelated = relatedProducts.length === 0;
+        const shouldLoadReviews = !initialReviews;
+        const shouldLoadWishlist = Boolean(token);
+
+        if (shouldLoadRelated) {
           setRelatedLoading(true);
-          const relatedData = await fetchProducts({
-            category: product.categoryId ?? product.category,
-            limit: 4,
-            exclude: product.id,
-          });
-          if (active) {
-            setRelated(relatedData.data || []);
-          }
         }
 
-        if (!initialReviews) {
-          const reviewData = await fetchReviews(product.id);
-          if (active) {
-            setReviews(reviewData);
-          }
+        const [relatedResult, reviewResult, wishlistResult] = await Promise.allSettled([
+          shouldLoadRelated
+            ? fetchProducts({
+                category: product.categoryId ?? product.category,
+                limit: 4,
+                exclude: product.id,
+              })
+            : Promise.resolve(null),
+          shouldLoadReviews ? fetchReviews(product.id) : Promise.resolve(null),
+          shouldLoadWishlist ? fetchWishlist() : Promise.resolve(null),
+        ]);
+
+        if (!active) {
+          return;
         }
 
-        if (token) {
-          const wishlist = await fetchWishlist();
-          if (active) {
-            setWishlisted(
-              wishlist.some((item: { productId: string }) => item.productId === product.id),
-            );
-          }
-        } else if (active) {
+        if (relatedResult.status === "fulfilled" && relatedResult.value) {
+          setRelated(relatedResult.value.data || []);
+        }
+
+        if (reviewResult.status === "fulfilled" && reviewResult.value) {
+          setReviews(reviewResult.value);
+        }
+
+        if (wishlistResult.status === "fulfilled" && wishlistResult.value) {
+          setWishlisted(
+            wishlistResult.value.some((item: { productId: string }) => item.productId === product.id),
+          );
+        } else if (!shouldLoadWishlist) {
           setWishlisted(false);
         }
       } catch (err) {

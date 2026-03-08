@@ -34,33 +34,57 @@ export default function ProductDetailPage() {
           setLoading(true);
         }
         setError("");
-        const data = await fetchProductBySlug(params.slug);
-        if (!active) {
-          return;
-        }
+        const previewRelatedRequest = preview
+          ? fetchProducts({
+              category: preview.categoryId ?? preview.category,
+              limit: 4,
+              exclude: preview.id,
+            })
+          : null;
+        const previewReviewRequest = preview ? fetchReviews(preview.id) : null;
 
-        setProduct(data);
-        setLoading(false);
-
-        const [relatedResponse, reviewData] = await Promise.allSettled([
-          fetchProducts({
-            category: data.categoryId ?? data.category,
-            limit: 4,
-            exclude: data.id,
-          }),
-          fetchReviews(data.id),
+        const [productResult, relatedResponse, reviewData] = await Promise.allSettled([
+          fetchProductBySlug(params.slug),
+          previewRelatedRequest,
+          previewReviewRequest,
         ]);
 
         if (!active) {
           return;
         }
 
-        if (relatedResponse.status === "fulfilled") {
+        if (productResult.status === "rejected") {
+          throw productResult.reason;
+        }
+
+        const data = productResult.value;
+        setProduct(data);
+        setLoading(false);
+
+        if (relatedResponse.status === "fulfilled" && relatedResponse.value) {
           setRelatedProducts(relatedResponse.value.data || []);
         }
 
-        if (reviewData.status === "fulfilled") {
+        if (reviewData.status === "fulfilled" && reviewData.value) {
           setReviews(reviewData.value);
+        }
+
+        if (relatedResponse.status !== "fulfilled" || !relatedResponse.value) {
+          const relatedFallback = await fetchProducts({
+            category: data.categoryId ?? data.category,
+            limit: 4,
+            exclude: data.id,
+          });
+          if (active) {
+            setRelatedProducts(relatedFallback.data || []);
+          }
+        }
+
+        if (reviewData.status !== "fulfilled" || !reviewData.value) {
+          const reviewFallback = await fetchReviews(data.id);
+          if (active) {
+            setReviews(reviewFallback);
+          }
         }
       } catch (err) {
         if (!active) {
