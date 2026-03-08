@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Product } from "@/lib/types";
 import { discountPrice, formatCurrency } from "@/lib/format";
@@ -9,14 +11,22 @@ import Pill from "../ui/pill";
 import Button from "../ui/button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCompare, removeFromCompare } from "@/store/slices/compare-slice";
+import { fetchProductBySlug } from "@/lib/api";
 
 export default function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const compared = useAppSelector((state) =>
     state.compare.items.some((item) => item.id === product.id),
   );
   const finalPrice = discountPrice(product.price, product.discount);
   const primaryImage = product.images?.[0]?.url;
+  const productHref = `/product/${product.slug}`;
+
+  useEffect(() => {
+    router.prefetch(productHref);
+    void fetchProductBySlug(product.slug).catch(() => undefined);
+  }, [product.slug, productHref, router]);
 
   return (
     <motion.article
@@ -24,7 +34,19 @@ export default function ProductCard({ product }: { product: Product }) {
       transition={{ duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }}
       className="group overflow-hidden rounded-3xl border border-black/10 bg-white p-5 shadow-[0_30px_80px_rgba(12,22,44,0.08)]"
     >
-      <Link href={`/product/${product.slug}`} className="block space-y-4">
+      <Link
+        href={productHref}
+        className="block space-y-4"
+        prefetch
+        onMouseEnter={() => {
+          router.prefetch(productHref);
+          void fetchProductBySlug(product.slug).catch(() => undefined);
+        }}
+        onTouchStart={() => {
+          router.prefetch(productHref);
+          void fetchProductBySlug(product.slug).catch(() => undefined);
+        }}
+      >
         <div className="relative h-72 overflow-hidden rounded-3xl bg-gradient-to-br from-gray-50 to-gray-100">
           {primaryImage ? (
             <Image
