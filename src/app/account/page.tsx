@@ -54,6 +54,12 @@ const accountSections: { id: AccountSection; label: string; hint: string }[] = [
   { id: "security", label: "Security", hint: "Password & 2FA" },
 ];
 
+const defaultNotifications: NotificationPreference = {
+  emailEnabled: true,
+  smsEnabled: false,
+  phone: "",
+};
+
 export default function AccountPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -70,11 +76,7 @@ export default function AccountPage() {
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [notifications, setNotifications] = useState<NotificationPreference>({
-    emailEnabled: true,
-    smsEnabled: false,
-    phone: "",
-  });
+  const [notifications, setNotifications] = useState<NotificationPreference>(defaultNotifications);
   const [addressForm, setAddressForm] = useState<Omit<Address, "id">>({
     label: "",
     street: "",
@@ -113,6 +115,11 @@ export default function AccountPage() {
   });
   const [recentlyViewed, setRecentlyViewed] = useState<Product[]>([]);
   const [activeAccountSection, setActiveAccountSection] = useState<AccountSection>("profile");
+  const [sectionLoaded, setSectionLoaded] = useState({
+    addresses: false,
+    payments: false,
+    ordersExtras: false,
+  });
   const totalSpend = orders.reduce((sum, order) => sum + order.total, 0);
   const lastOrder = orders[0];
   const completionScore = [
@@ -138,34 +145,16 @@ export default function AccountPage() {
       setLoading(false);
       return;
     }
+
+    setLoading(true);
     const load = async () => {
       try {
-        const user = await fetchProfile();
+        const [user, data] = await Promise.all([fetchProfile(), fetchOrders()]);
         setProfile(user);
         setName(user.name);
         setAvatarUrl(user.avatarUrl ?? "");
         setCoverUrl(user.coverUrl ?? "");
-        const [
-          data,
-          addressData,
-          paymentData,
-          notificationData,
-          returnData,
-          activityData,
-        ] = await Promise.all([
-          fetchOrders(),
-          fetchAddresses(),
-          fetchPaymentMethods(),
-          fetchNotifications(),
-          fetchReturns(),
-          fetchActivity(),
-        ]);
         setOrders(data || []);
-        setAddresses(addressData || []);
-        setPaymentMethods(paymentData || []);
-        setNotifications(notificationData || { emailEnabled: true, smsEnabled: false, phone: "" });
-        setReturns(returnData || []);
-        setActivity(activityData || []);
         setTwoFactorEnabled(user.twoFactorEnabled ?? false);
       } catch (err) {
         setError(handleApiError(err));
@@ -175,6 +164,61 @@ export default function AccountPage() {
     };
     load();
   }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+
+    let active = true;
+
+    const loadSection = async () => {
+      try {
+        if (activeAccountSection === "addresses" && !sectionLoaded.addresses) {
+          const addressData = await fetchAddresses();
+          if (!active) return;
+          setAddresses(addressData || []);
+          setSectionLoaded((prev) => ({ ...prev, addresses: true }));
+        }
+
+        if (activeAccountSection === "payments" && !sectionLoaded.payments) {
+          const [paymentData, notificationData] = await Promise.all([
+            fetchPaymentMethods(),
+            fetchNotifications(),
+          ]);
+          if (!active) return;
+          setPaymentMethods(paymentData || []);
+          setNotifications(notificationData || defaultNotifications);
+          setSectionLoaded((prev) => ({ ...prev, payments: true }));
+        }
+
+        if (activeAccountSection === "orders" && !sectionLoaded.ordersExtras) {
+          const [returnData, activityData] = await Promise.all([
+            fetchReturns(),
+            fetchActivity(),
+          ]);
+          if (!active) return;
+          setReturns(returnData || []);
+          setActivity(activityData || []);
+          setSectionLoaded((prev) => ({ ...prev, ordersExtras: true }));
+        }
+      } catch (err) {
+        if (active) {
+          setError(handleApiError(err));
+        }
+      }
+    };
+
+    void loadSection();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    activeAccountSection,
+    sectionLoaded.addresses,
+    sectionLoaded.ordersExtras,
+    sectionLoaded.payments,
+    token,
+  ]);
 
   useEffect(() => {
     const storageKey = "thrifty_recently_viewed";
