@@ -6,6 +6,7 @@ import { requireUser } from "../middleware/jwt-auth";
 import { sendMail } from "../lib/mailer";
 import { sendSms } from "../lib/sms";
 import { logActivity } from "../lib/activity";
+import { buildOrderCode } from "../lib/order-code";
 import PDFDocument from "pdfkit";
 
 const router = Router();
@@ -17,6 +18,7 @@ const orderItemSchema = z.object({
   sizeUS: z.string().optional(),
   sizeEU: z.string().optional(),
   image: z.string().optional(),
+  color: z.string().optional(),
 });
 
 const createOrderSchema = z.object({
@@ -54,9 +56,11 @@ router.get("/", requireUser, async (req, res, next) => {
     return res.json(
       orders.map((order) => ({
         id: order.id,
+        code: buildOrderCode(order.id, order.placedAt),
         status: order.status,
         total: order.total,
         placedAt: order.placedAt,
+        paymentMethod: order.paymentMethod ?? undefined,
         courierName: order.courierName ?? undefined,
         trackingNumber: order.trackingNumber ?? undefined,
         trackingUrl: order.trackingUrl ?? undefined,
@@ -109,11 +113,13 @@ router.get("/:id", requireUser, async (req, res, next) => {
 
     return res.json({
       id: order.id,
+      code: buildOrderCode(order.id, order.placedAt),
       status: order.status,
       subTotal: order.subTotal,
       discountTotal: order.discountTotal,
       total: order.total,
       placedAt: order.placedAt,
+      paymentMethod: order.paymentMethod ?? undefined,
       courierName: order.courierName ?? undefined,
       trackingNumber: order.trackingNumber ?? undefined,
       trackingUrl: order.trackingUrl ?? undefined,
@@ -202,10 +208,10 @@ router.post("/", requireUser, async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const payload = createOrderSchema.parse(req.body);
-    const productIds = payload.items.map((item) => item.productId);
+    const uniqueProductIds = Array.from(new Set(payload.items.map((item) => item.productId)));
 
     const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: { id: { in: uniqueProductIds } },
       include: {
         variants: {
           include: { sizes: true },
@@ -213,24 +219,49 @@ router.post("/", requireUser, async (req, res, next) => {
       },
     });
 
-    if (products.length !== productIds.length) {
+    if (products.length !== uniqueProductIds.length) {
       return res.status(400).json({ message: "One or more products are invalid." });
     }
 
     const productMap = new Map(products.map((product) => [product.id, product]));
+    const normalize = (value?: string | null) => value?.trim().toLowerCase();
+    const resolvedItems: Array<
+      z.infer<typeof orderItemSchema> & {
+        product: (typeof products)[number];
+        variant?: (typeof products)[number]["variants"][number];
+        resolvedSizeUS?: string;
+        resolvedSizeEU?: string;
+      }
+    > = [];
 
     for (const item of payload.items) {
       const product = productMap.get(item.productId);
       if (!product) {
         return res.status(400).json({ message: "Invalid product." });
       }
-      if (item.variantId) {
-        const variant = product.variants.find((v) => v.id === item.variantId);
+
+      let variant = item.variantId
+        ? product.variants.find((entry) => entry.id === item.variantId)
+        : undefined;
+
+      if (!variant && item.color) {
+        variant = product.variants.find(
+          (entry) => normalize(entry.color) === normalize(item.color),
+        );
+      }
+
+      if (!variant && product.variants.length === 1) {
+        variant = product.variants[0];
+      }
+
+      if (product.variants.length > 0) {
         if (!variant) {
           return res.status(400).json({ message: "Invalid variant." });
         }
         const sizeMatch = variant.sizes.find(
-          (s) => s.sizeUS === item.sizeUS || s.sizeEU === item.sizeEU,
+          (entry) =>
+            (item.sizeUS && normalize(entry.sizeUS) === normalize(item.sizeUS)) ||
+            (item.sizeEU && normalize(entry.sizeEU) === normalize(item.sizeEU)),
         );
         if (!sizeMatch) {
           return res.status(400).json({ message: "Invalid size." });
@@ -240,18 +271,29 @@ router.post("/", requireUser, async (req, res, next) => {
             .status(400)
             .json({ message: `Insufficient stock for ${product.name} (${variant.color}).` });
         }
+        resolvedItems.push({
+          ...item,
+          product,
+          variant,
+          variantId: variant.id,
+          color: variant.color,
+          resolvedSizeUS: sizeMatch.sizeUS ?? item.sizeUS,
+          resolvedSizeEU: sizeMatch.sizeEU ?? item.sizeEU,
+        });
       } else if (product.stock < item.quantity) {
         return res.status(400).json({ message: `Insufficient stock for ${product.name}.` });
+      } else {
+        resolvedItems.push({
+          ...item,
+          product,
+          resolvedSizeUS: item.sizeUS,
+          resolvedSizeEU: item.sizeEU,
+        });
       }
     }
 
-    const subTotal = payload.items.reduce((sum, item) => {
-      const product = productMap.get(item.productId);
-      if (!product) return sum;
-      const variant = item.variantId
-        ? product.variants.find((v) => v.id === item.variantId)
-        : undefined;
-      const price = variant?.priceOverride ?? product.sellPrice;
+    const subTotal = resolvedItems.reduce((sum, item) => {
+      const price = item.variant?.priceOverride ?? item.product.sellPrice;
       return sum + price * item.quantity;
     }, 0);
 
@@ -308,18 +350,16 @@ router.post("/", requireUser, async (req, res, next) => {
           shipping: payload.shipping ?? undefined,
           paymentMethod: payload.paymentMethod ?? undefined,
           items: {
-            create: payload.items.map((item) => {
-              const product = productMap.get(item.productId)!;
-              const variant = item.variantId
-                ? product.variants.find((v) => v.id === item.variantId)
-                : undefined;
+            create: resolvedItems.map((item) => {
+              const product = item.product;
+              const variant = item.variant;
               const price = variant?.priceOverride ?? product.sellPrice;
               return {
                 productId: product.id,
                 variantId: variant?.id,
                 color: variant?.color,
-                sizeUS: item.sizeUS,
-                sizeEU: item.sizeEU,
+                sizeUS: item.resolvedSizeUS,
+                sizeEU: item.resolvedSizeEU,
                 name: product.name,
                 quantity: item.quantity,
                 soldPrice: price,
@@ -332,12 +372,12 @@ router.post("/", requireUser, async (req, res, next) => {
         select: { id: true },
       });
 
-      for (const item of payload.items) {
-        if (item.variantId) {
-          const product = productMap.get(item.productId)!;
-          const variant = product.variants.find((v) => v.id === item.variantId);
-          const sizeMatch = variant?.sizes.find(
-            (s) => s.sizeUS === item.sizeUS || s.sizeEU === item.sizeEU,
+      for (const item of resolvedItems) {
+        if (item.variant) {
+          const sizeMatch = item.variant.sizes.find(
+            (entry) =>
+              (item.resolvedSizeUS && normalize(entry.sizeUS) === normalize(item.resolvedSizeUS)) ||
+              (item.resolvedSizeEU && normalize(entry.sizeEU) === normalize(item.resolvedSizeEU)),
           );
           if (sizeMatch) {
             await tx.variantSize.update({
@@ -346,12 +386,12 @@ router.post("/", requireUser, async (req, res, next) => {
             });
           }
           await tx.product.update({
-            where: { id: item.productId },
+            where: { id: item.product.id },
             data: { stock: { decrement: item.quantity } },
           });
         } else {
           await tx.product.update({
-            where: { id: item.productId },
+            where: { id: item.product.id },
             data: { stock: { decrement: item.quantity } },
           });
         }
@@ -394,22 +434,21 @@ router.post("/", requireUser, async (req, res, next) => {
       ? process.env.ADMIN_ALERT_EMAILS.split(",").map((e) => e.trim()).filter(Boolean)
       : [];
     const threshold = Number(process.env.STOCK_ALERT_THRESHOLD ?? 5);
-    const lowStockItems = payload.items
+    const lowStockItems = resolvedItems
       .map((item) => {
-        const product = productMap.get(item.productId);
-        if (!product) return null;
-        if (item.variantId) {
-          const variant = product.variants.find((v) => v.id === item.variantId);
-          const sizeMatch = variant?.sizes.find(
-            (s) => s.sizeUS === item.sizeUS || s.sizeEU === item.sizeEU,
+        if (item.variant) {
+          const sizeMatch = item.variant.sizes.find(
+            (entry) =>
+              (item.resolvedSizeUS && normalize(entry.sizeUS) === normalize(item.resolvedSizeUS)) ||
+              (item.resolvedSizeEU && normalize(entry.sizeEU) === normalize(item.resolvedSizeEU)),
           );
           if (sizeMatch && sizeMatch.stock - item.quantity <= threshold) {
-            return `${product.name} (${variant?.color}) size ${item.sizeUS ?? item.sizeEU ?? ""}`;
+            return `${item.product.name} (${item.variant.color}) size ${item.resolvedSizeUS ?? item.resolvedSizeEU ?? ""}`;
           }
           return null;
         }
-        if (product.stock - item.quantity <= threshold) {
-          return `${product.name}`;
+        if (item.product.stock - item.quantity <= threshold) {
+          return `${item.product.name}`;
         }
         return null;
       })
@@ -431,26 +470,28 @@ router.post("/", requireUser, async (req, res, next) => {
       await sendMail(
         [shippingEmail],
         "Order confirmation",
-        `<p>Thanks for your order!</p><p>Order ID: ${order.id}</p><p>Total: ${total}</p>`,
+        `<p>Thanks for your order!</p><p>Order number: ${buildOrderCode(order.id, order.placedAt)}</p><p>Total: ${total}</p>`,
       );
     }
     const smsNumber = preference?.phone || payload.shipping?.phone;
     if (preference?.smsEnabled && smsNumber) {
       await sendSms(
         smsNumber,
-        `Thanks for your order ${order.id}. Total ${total}.`,
+        `Thanks for your order ${buildOrderCode(order.id, order.placedAt)}. Total ${total}.`,
       );
     }
 
-    await logActivity(userId, "order", `Order placed ${order.id}`);
+    await logActivity(userId, "order", `Order placed ${buildOrderCode(order.id, order.placedAt)}`);
 
     return res.status(201).json({
       id: order.id,
+      code: buildOrderCode(order.id, order.placedAt),
       status: order.status,
       subTotal: order.subTotal,
       discountTotal: order.discountTotal,
       total: order.total,
       placedAt: order.placedAt,
+      paymentMethod: order.paymentMethod ?? undefined,
       items: order.items.map((item) => ({
         id: item.id,
         productId: item.productId,

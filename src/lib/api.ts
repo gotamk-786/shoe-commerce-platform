@@ -535,6 +535,7 @@ export const createOrder = async (payload: {
     sizeUS?: string;
     sizeEU?: string;
     image?: string;
+    color?: string;
   }>;
   shipping: Record<string, string>;
   paymentMethod: string;

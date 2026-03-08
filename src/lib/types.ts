@@ -113,11 +113,13 @@ export type OrderLine = {
 
 export type Order = {
   id: string;
+  code?: string;
   status: "processing" | "paid" | "shipped" | "delivered" | "cancelled";
   subTotal?: number;
   discountTotal?: number;
   total: number;
   placedAt: string;
+  paymentMethod?: string;
   courierName?: string;
   trackingNumber?: string;
   trackingUrl?: string;
@@ -175,9 +177,11 @@ export type AdminProduct = {
 
 export type AdminOrder = {
   id: string;
+  code?: string;
   status: "processing" | "paid" | "shipped" | "delivered" | "cancelled";
   total: number;
   placedAt: string;
+  paymentMethod?: string;
   customer: { name: string; email: string };
 };
 

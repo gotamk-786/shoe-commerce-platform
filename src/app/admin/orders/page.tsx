@@ -8,14 +8,7 @@ import Button from "@/components/ui/button";
 import { adminFetchOrders, adminUpdateOrderStatus, handleApiError } from "@/lib/api";
 import { AdminOrder } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
-
-const statusOptions: AdminOrder["status"][] = [
-  "processing",
-  "paid",
-  "shipped",
-  "delivered",
-  "cancelled",
-];
+import { getOrderDisplayCode } from "@/lib/order-display";
 
 export default function AdminOrdersPage() {
   const router = useRouter();
@@ -46,6 +39,11 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const getStatusOptions = (order: AdminOrder): AdminOrder["status"][] =>
+    order.paymentMethod === "cod"
+      ? ["processing", "shipped", "delivered", "cancelled"]
+      : ["processing", "paid", "shipped", "delivered", "cancelled"];
+
   return (
     <div className="space-y-6">
       <SectionHeading tone="dark"
@@ -56,7 +54,12 @@ export default function AdminOrdersPage() {
       <TableShell title="Orders list" headers={["Order", "Customer", "Total", "Status", "Placed", "Action"]}>
         {orders.map((order) => (
           <tr key={order.id} className="text-sm text-white/80">
-            <td className="py-3">{order.id}</td>
+            <td className="py-3">
+              <div className="space-y-1">
+                <p>{getOrderDisplayCode(order)}</p>
+                <p className="text-xs text-white/50">{order.paymentMethod ?? "manual"}</p>
+              </div>
+            </td>
             <td>
               <p className="text-white">{order.customer.name}</p>
               <p className="text-xs text-white/60">{order.customer.email}</p>
@@ -68,7 +71,7 @@ export default function AdminOrdersPage() {
                 onChange={(e) => updateStatus(order.id, e.target.value as AdminOrder["status"])}
                 className="rounded-lg border border-white/20 bg-white text-sm text-gray-900 px-3 py-2"
               >
-                {statusOptions.map((s) => (
+                {getStatusOptions(order).map((s) => (
                   <option key={s} value={s} className="text-gray-900">
                     {s}
                   </option>

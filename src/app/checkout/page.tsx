@@ -3,7 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
-import { createOrder, fetchPaymentSettings, handleApiError, validateCoupon } from "@/lib/api";
+import {
+  createOrder,
+  fetchPaymentSettings,
+  fetchProductBySlug,
+  handleApiError,
+  validateCoupon,
+} from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
@@ -82,12 +88,14 @@ export default function CheckoutPage() {
       const sanitizedItems = items
         .filter((item) => item.productId)
         .map((item) => ({
+          source: item,
           productId: item.productId,
           variantId: item.variantId || undefined,
           quantity: Number(item.quantity) || 1,
           sizeUS: item.sizeUS || undefined,
           sizeEU: item.sizeEU || undefined,
           image: item.image || undefined,
+          color: item.color || undefined,
         }));
 
       if (sanitizedItems.length === 0) {
@@ -95,8 +103,86 @@ export default function CheckoutPage() {
         return;
       }
 
+      const products = await Promise.all(
+        Array.from(new Map(sanitizedItems.map((item) => [item.source.slug, item.source.slug])).values()).map(
+          (slug) => fetchProductBySlug(slug),
+        ),
+      );
+      const productMap = new Map(products.map((product) => [product.id, product]));
+      const resolvedItems = sanitizedItems.map((item) => {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          return null;
+        }
+
+        let variant = item.variantId
+          ? product.variants?.find((entry) => entry.id === item.variantId)
+          : undefined;
+
+        if (!variant && item.color) {
+          variant = product.variants?.find(
+            (entry) => entry.color.trim().toLowerCase() === item.color?.trim().toLowerCase(),
+          );
+        }
+
+        if (!variant && product.variants?.length === 1) {
+          variant = product.variants[0];
+        }
+
+        if (product.variants?.length) {
+          if (!variant) {
+            return null;
+          }
+
+          const size = variant.sizes.find(
+            (entry) =>
+              (item.sizeUS &&
+                entry.sizeUS?.trim().toLowerCase() === item.sizeUS.trim().toLowerCase()) ||
+              (item.sizeEU &&
+                entry.sizeEU?.trim().toLowerCase() === item.sizeEU.trim().toLowerCase()),
+          );
+
+          if (!size) {
+            return null;
+          }
+
+          return {
+            productId: item.productId,
+            variantId: variant.id,
+            quantity: item.quantity,
+            sizeUS: size.sizeUS || undefined,
+            sizeEU: size.sizeEU || undefined,
+            image: item.image || undefined,
+            color: variant.color,
+          };
+        }
+
+        return {
+          productId: item.productId,
+          quantity: item.quantity,
+          sizeUS: item.sizeUS,
+          sizeEU: item.sizeEU,
+          image: item.image || undefined,
+          color: item.color,
+        };
+      });
+
+      if (resolvedItems.some((item) => !item)) {
+        setStatus({
+          loading: false,
+          error: "One or more cart items are outdated. Remove that item and add it again.",
+        });
+        return;
+      }
+
+      const finalItems = resolvedItems.filter(
+        (
+          item,
+        ): item is NonNullable<(typeof resolvedItems)[number]> => item !== null,
+      );
+
       await createOrder({
-        items: sanitizedItems,
+        items: finalItems,
         shipping: Object.fromEntries(
           Object.entries({ ...shipping, note }).filter(([, value]) => value.trim().length > 0),
         ),

@@ -6,6 +6,12 @@ import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import Skeleton from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/format";
+import {
+  getOrderDisplayCode,
+  getOrderPaymentLabel,
+  getOrderSteps,
+  statusLabels,
+} from "@/lib/order-display";
 import { buildTrackingUrl } from "@/lib/tracking";
 import {
   fetchOrders,
@@ -304,12 +310,6 @@ export default function AccountPage() {
     );
   }
 
-  const statusSteps: Order["status"][] = [
-    "processing",
-    "paid",
-    "shipped",
-    "delivered",
-  ];
   const isSectionOpen = (section: AccountSection) => activeAccountSection === section;
 
   return (
@@ -553,14 +553,21 @@ export default function AccountPage() {
                 {orders.map((order) => (
                   <div
                     key={order.id}
-                    className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3"
+                    className="flex flex-col gap-4 rounded-2xl border border-black/10 px-4 py-4 sm:flex-row sm:items-start sm:justify-between"
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">Order #{order.id}</p>
-                      <p className="text-xs text-gray-500">{order.status}</p>
-                      <div className="mt-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
-                        {statusSteps.map((step, idx) => {
-                          const activeIndex = statusSteps.indexOf(order.status);
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">
+                        Order #{getOrderDisplayCode(order)}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-black/5 px-2.5 py-1 text-[11px] font-medium text-gray-700">
+                          {getOrderPaymentLabel(order)}
+                        </span>
+                        <span className="text-xs text-gray-500">{statusLabels[order.status]}</span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.2em] text-gray-400">
+                        {getOrderSteps(order).map((step, idx) => {
+                          const activeIndex = getOrderSteps(order).indexOf(order.status);
                           const isActive = idx <= activeIndex;
                           return (
                             <span
@@ -569,13 +576,13 @@ export default function AccountPage() {
                                 isActive ? "bg-black text-white" : "bg-black/5 text-gray-400"
                               }`}
                             >
-                              {step}
+                              {statusLabels[step]}
                             </span>
                           );
                         })}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <p className="text-sm font-semibold text-gray-900">
                         {formatCurrency(order.total)}
                       </p>
@@ -1200,13 +1207,13 @@ export default function AccountPage() {
         >
           <h3 className="text-lg font-semibold text-gray-900">Recently viewed</h3>
           {recentlyViewed.length ? (
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {recentlyViewed.slice(0, 6).map((product) => (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {recentlyViewed.slice(0, 4).map((product) => (
                 <button
                   key={product.id}
                   type="button"
                   onClick={() => router.push(`/product/${product.slug}`)}
-                  className="min-w-[180px] rounded-2xl border border-black/10 bg-white p-3 text-left shadow-[0_12px_40px_rgba(12,22,44,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(12,22,44,0.08)]"
+                  className="rounded-2xl border border-black/10 bg-white p-3 text-left shadow-[0_12px_40px_rgba(12,22,44,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(12,22,44,0.08)]"
                 >
                   <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-50">
                     {product.images?.[0]?.url ? (

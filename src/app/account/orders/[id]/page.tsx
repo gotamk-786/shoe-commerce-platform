@@ -8,23 +8,9 @@ import Skeleton from "@/components/ui/skeleton";
 import { fetchOrderById, handleApiError } from "@/lib/api";
 import { Order } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
+import { getOrderDisplayCode, getOrderPaymentLabel, getOrderSteps, statusLabels } from "@/lib/order-display";
 import { buildTrackingUrl } from "@/lib/tracking";
 import { useAppSelector } from "@/store/hooks";
-
-const statusSteps: Order["status"][] = [
-  "processing",
-  "paid",
-  "shipped",
-  "delivered",
-];
-
-const statusLabels: Record<Order["status"], string> = {
-  processing: "Processing",
-  paid: "Paid",
-  shipped: "Shipped",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-};
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
@@ -55,7 +41,7 @@ export default function OrderDetailPage() {
   const loading = Boolean(token) && !isOrderReady && !error;
 
   const activeIndex = useMemo(
-    () => (order ? statusSteps.indexOf(order.status) : -1),
+    () => (order ? getOrderSteps(order).indexOf(order.status) : -1),
     [order],
   );
 
@@ -102,13 +88,16 @@ export default function OrderDetailPage() {
     <div className="mx-auto max-w-6xl px-6 py-12 space-y-6">
       <SectionHeading
         eyebrow="Order tracking"
-        title={`Order #${order.id}`}
+        title={`Order #${getOrderDisplayCode(order)}`}
         description={`Placed on ${new Date(order.placedAt).toLocaleDateString()}`}
       />
 
       <div className="rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
         <div className="flex flex-wrap items-center gap-3">
-          {statusSteps.map((step, idx) => (
+          <span className="rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-gray-700">
+            {getOrderPaymentLabel(order)}
+          </span>
+          {getOrderSteps(order).map((step, idx) => (
             <span
               key={step}
               className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em] ${

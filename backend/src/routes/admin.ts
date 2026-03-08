@@ -4,6 +4,7 @@ import prisma from "../prisma";
 import { requireAdmin } from "../middleware/auth";
 import { requireUser } from "../middleware/jwt-auth";
 import { clearCachedResponseByPrefix } from "../lib/response-cache";
+import { buildOrderCode } from "../lib/order-code";
 
 const router = Router();
 
@@ -339,9 +340,11 @@ router.get("/orders", async (_req, res, next) => {
     return res.json({
       data: orders.map((order) => ({
         id: order.id,
+        code: buildOrderCode(order.id, order.placedAt),
         status: order.status,
         total: order.total,
         placedAt: order.placedAt,
+        paymentMethod: order.paymentMethod ?? undefined,
         customer: order.user,
       })),
     });
