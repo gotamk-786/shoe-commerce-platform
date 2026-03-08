@@ -492,10 +492,6 @@ export default function CheckoutPage() {
 
                   {addressMode === "saved" && selectedSavedAddress ? (
                     <>
-                      <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-3 text-sm text-gray-600">
-                        Choose a delivery address. Your default address is already selected.
-                      </div>
-
                       <div className="grid gap-3 md:grid-cols-2">
                         {savedAddresses.map((address) => {
                           const isSelected = selectedAddressId === address.id;
@@ -520,7 +516,7 @@ export default function CheckoutPage() {
                                     }`}
                                     aria-hidden="true"
                                   >
-                                    ✓
+                                    {isSelected ? "v" : ""}
                                   </span>
                                   <div>
                                     <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
@@ -570,17 +566,8 @@ export default function CheckoutPage() {
                     </>
                   ) : null}
 
-                  {addressMode === "new" ? (
-                    <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-3 text-sm text-gray-600">
-                      Enter a fresh delivery address below.
-                    </div>
-                  ) : null}
                 </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-black/10 bg-slate-50/70 px-4 py-3 text-sm text-gray-600">
-                  Add your delivery details below to continue checkout.
-                </div>
-              )}
+              ) : null}
               {addressStatus.error && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   Saved addresses could not be loaded. You can still enter a new address.
