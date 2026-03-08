@@ -72,6 +72,17 @@ export default function CheckoutPage() {
 
   const subTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const total = Math.max(subTotal - discount, 0);
+  const resetShippingAddressFields = () => {
+    setShipping((prev) => ({
+      ...prev,
+      address: "",
+      city: "",
+      state: "",
+      zip: "",
+      country: "",
+      phone: "",
+    }));
+  };
 
   useEffect(() => {
     fetchPaymentSettings()
@@ -386,7 +397,12 @@ export default function CheckoutPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => setAddressMode("saved")}
+                      onClick={() => {
+                        setAddressMode("saved");
+                        if (selectedAddressId) {
+                          applySavedAddress(selectedAddressId);
+                        }
+                      }}
                       className={`rounded-full px-4 py-2 text-sm font-medium ${
                         addressMode === "saved"
                           ? "bg-black text-white"
@@ -397,7 +413,12 @@ export default function CheckoutPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAddressMode("new")}
+                      onClick={() => {
+                        setAddressMode("new");
+                        setSelectedAddressId("");
+                        setSaveAddressForLater(false);
+                        resetShippingAddressFields();
+                      }}
                       className={`rounded-full px-4 py-2 text-sm font-medium ${
                         addressMode === "new"
                           ? "bg-black text-white"
@@ -443,6 +464,12 @@ export default function CheckoutPage() {
                           </p>
                         </button>
                       ))}
+                    </div>
+                  ) : null}
+
+                  {addressMode === "new" ? (
+                    <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-3 text-sm text-gray-600">
+                      Enter a fresh delivery address below. Saved address fields have been cleared.
                     </div>
                   ) : null}
                 </div>
