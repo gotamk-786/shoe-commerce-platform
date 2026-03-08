@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import SectionHeading from "@/components/ui/section-heading";
 import Skeleton from "@/components/ui/skeleton";
@@ -28,6 +28,7 @@ const statusLabels: Record<Order["status"], string> = {
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const token = useAppSelector((state) => state.user.token);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
@@ -66,10 +67,10 @@ export default function OrderDetailPage() {
           Your timeline and order details will appear here.
         </p>
         <div className="mt-4 flex justify-center gap-3">
-          <Button variant="primary" onClick={() => (window.location.href = "/login")}>
+          <Button variant="primary" onClick={() => router.push("/login")}>
             Log in
           </Button>
-          <Button variant="ghost" onClick={() => (window.location.href = "/register")}>
+          <Button variant="ghost" onClick={() => router.push("/register")}>
             Create account
           </Button>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import SectionHeading from "@/components/ui/section-heading";
 import ProductGrid from "@/components/product/product-grid";
@@ -9,6 +10,7 @@ import { Product } from "@/lib/types";
 import { useAppSelector } from "@/store/hooks";
 
 export default function WishlistPage() {
+  const router = useRouter();
   const token = useAppSelector((state) => state.user.token);
   const [products, setProducts] = useState<Product[]>([]);
   const [status, setStatus] = useState({ loading: true, error: "" });
@@ -32,10 +34,10 @@ export default function WishlistPage() {
         <p className="text-lg font-semibold text-gray-900">Your wishlist is waiting</p>
         <p className="mt-2 text-sm text-gray-600">Log in to save products across devices.</p>
         <div className="mt-4 flex justify-center gap-3">
-          <Button variant="primary" onClick={() => (window.location.href = "/login")}>
+          <Button variant="primary" onClick={() => router.push("/login")}>
             Log in
           </Button>
-          <Button variant="ghost" onClick={() => (window.location.href = "/register")}>
+          <Button variant="ghost" onClick={() => router.push("/register")}>
             Create account
           </Button>
         </div>

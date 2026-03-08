@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import SectionHeading from "@/components/ui/section-heading";
 import Skeleton from "@/components/ui/skeleton";
@@ -27,6 +27,7 @@ const statusLabels: Record<Order["status"], string> = {
 
 export default function AdminOrderDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [status, setStatus] = useState({ loading: true, error: "" });
   const [trackingForm, setTrackingForm] = useState({
@@ -85,7 +86,7 @@ export default function AdminOrderDetailPage() {
           title={`Order #${order.id}`}
           description={`Placed on ${new Date(order.placedAt).toLocaleDateString()}`}
         />
-        <Button variant="ghost" onClick={() => (window.location.href = "/admin/orders")}>
+        <Button variant="ghost" onClick={() => router.push("/admin/orders")}>
           Back to orders
         </Button>
       </div>

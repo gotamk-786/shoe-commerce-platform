@@ -12,11 +12,24 @@ const inter = Inter({
   variable: "--font-sans-base",
 });
 
+const resolveSiteUrl = () => {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000";
+
+  try {
+    return new URL(raw);
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+};
+
 export const metadata: Metadata = {
   title: "Thrifty Shoes | Apple-level Luxury Footwear",
   description:
     "Thrifty Shoes pairs premium footwear with a minimalist Apple-inspired experience.",
-  metadataBase: new URL("http://localhost:3000"),
+  metadataBase: resolveSiteUrl(),
   openGraph: {
     title: "Thrifty Shoes",
     description: "Apple-quality storefront for the modern sneaker enthusiast.",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import TableShell from "@/components/admin/widgets/table-shell";
 import SectionHeading from "@/components/ui/section-heading";
 import Button from "@/components/ui/button";
@@ -17,6 +18,7 @@ const statusOptions: AdminOrder["status"][] = [
 ];
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [status, setStatus] = useState({ loading: true, error: "" });
 
@@ -78,7 +80,7 @@ export default function AdminOrdersPage() {
               <Button
                 className="text-xs"
                 variant="ghost"
-                onClick={() => (window.location.href = `/admin/orders/${order.id}`)}
+                onClick={() => router.push(`/admin/orders/${order.id}`)}
               >
                 Track
               </Button>

@@ -44,6 +44,7 @@ export default function CheckoutPage() {
     allowCod: true,
     allowDummy: true,
   });
+  const [paymentSettingsError, setPaymentSettingsError] = useState("");
   const [status, setStatus] = useState<{ loading: boolean; error?: string; done?: boolean }>({
     loading: false,
   });
@@ -53,8 +54,13 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     fetchPaymentSettings()
-      .then((data) => setPaymentSettings(data))
-      .catch(() => {});
+      .then((data) => {
+        setPaymentSettings(data);
+        setPaymentSettingsError("");
+      })
+      .catch((err) => {
+        setPaymentSettingsError(handleApiError(err));
+      });
   }, []);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -124,6 +130,11 @@ export default function CheckoutPage() {
           {!token && (
             <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               Log in first to place your order. Your cart will stay saved.
+            </div>
+          )}
+          {paymentSettingsError && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Payment settings could not be refreshed. Default checkout options are being used.
             </div>
           )}
           {step === 0 && (

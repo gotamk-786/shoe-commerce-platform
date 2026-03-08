@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import Skeleton from "@/components/ui/skeleton";
@@ -54,6 +55,7 @@ const accountSections: { id: AccountSection; label: string; hint: string }[] = [
 ];
 
 export default function AccountPage() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.user.token);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -210,10 +212,10 @@ export default function AccountPage() {
           Log in to see your profile, orders, and saved pairs.
         </p>
         <div className="mt-4 flex justify-center gap-3">
-          <Button variant="primary" onClick={() => (window.location.href = "/login")}>
+          <Button variant="primary" onClick={() => router.push("/login")}>
             Log in
           </Button>
-          <Button variant="ghost" onClick={() => (window.location.href = "/register")}>
+          <Button variant="ghost" onClick={() => router.push("/register")}>
             Create account
           </Button>
         </div>
@@ -425,7 +427,7 @@ export default function AccountPage() {
                   <Button variant="ghost" onClick={() => setShowProfileForm(true)}>
                     Edit profile
                   </Button>
-                  <Button variant="ghost" onClick={() => (window.location.href = "/wishlist")}>
+                  <Button variant="ghost" onClick={() => router.push("/wishlist")}>
                     View wishlist
                   </Button>
                 </div>
@@ -521,7 +523,7 @@ export default function AccountPage() {
                               window.open(trackingLink, "_blank");
                               return;
                             }
-                            window.location.href = `/account/orders/${order.id}`;
+                            router.push(`/account/orders/${order.id}`);
                           }}
                         >
                           Track order
@@ -1131,7 +1133,7 @@ export default function AccountPage() {
                 <button
                   key={product.id}
                   type="button"
-                  onClick={() => (window.location.href = `/product/${product.slug}`)}
+                  onClick={() => router.push(`/product/${product.slug}`)}
                   className="min-w-[180px] rounded-2xl border border-black/10 bg-white p-3 text-left shadow-[0_12px_40px_rgba(12,22,44,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(12,22,44,0.08)]"
                 >
                   <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-50">
