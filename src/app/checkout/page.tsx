@@ -71,6 +71,10 @@ export default function CheckoutPage() {
   });
 
   const subTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const selectedSavedAddress =
+    addressMode === "saved"
+      ? savedAddresses.find((entry) => entry.id === selectedAddressId) ?? null
+      : null;
   const total = Math.max(subTotal - discount, 0);
   const resetShippingAddressFields = () => {
     setShipping((prev) => ({
@@ -392,15 +396,17 @@ export default function CheckoutPage() {
           {step === 0 && (
             <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
               <h2 className="text-xl font-semibold text-gray-900">Shipping details</h2>
-              {token && savedAddresses.length > 0 && (
+              {token && savedAddresses.length > 0 ? (
                 <div className="space-y-4 rounded-2xl border border-black/10 bg-slate-50/70 p-4">
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setAddressMode("saved");
-                        if (selectedAddressId) {
-                          applySavedAddress(selectedAddressId);
+                        const defaultAddress =
+                          savedAddresses.find((entry) => entry.isDefault) ?? savedAddresses[0];
+                        if (defaultAddress) {
+                          applySavedAddress(defaultAddress.id);
                         }
                       }}
                       className={`rounded-full px-4 py-2 text-sm font-medium ${
@@ -409,7 +415,7 @@ export default function CheckoutPage() {
                           : "border border-black/10 bg-white text-gray-700"
                       }`}
                     >
-                      Use saved address
+                      Use default address
                     </button>
                     <button
                       type="button"
@@ -425,53 +431,40 @@ export default function CheckoutPage() {
                           : "border border-black/10 bg-white text-gray-700"
                       }`}
                     >
-                      Use new address
+                      Add new address
                     </button>
                   </div>
 
-                  {addressMode === "saved" ? (
-                    <div className="grid gap-3">
-                      {savedAddresses.map((address) => (
-                        <button
-                          key={address.id}
-                          type="button"
-                          onClick={() => applySavedAddress(address.id)}
-                          className={`rounded-2xl border px-4 py-4 text-left transition ${
-                            selectedAddressId === address.id
-                              ? "border-black bg-black text-white"
-                              : "border-black/10 bg-white text-gray-900"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
-                            {address.isDefault && (
-                              <span
-                                className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                                  selectedAddressId === address.id
-                                    ? "bg-white/15 text-white"
-                                    : "bg-black/5 text-gray-600"
-                                }`}
-                              >
-                                Default
-                              </span>
-                            )}
-                          </div>
-                          <p className={`mt-2 text-sm ${selectedAddressId === address.id ? "text-white/80" : "text-gray-600"}`}>
-                            {address.street}, {address.city}, {address.state} {address.zip}
-                          </p>
-                          <p className={`text-xs ${selectedAddressId === address.id ? "text-white/65" : "text-gray-500"}`}>
-                            {address.country} · {address.phone}
-                          </p>
-                        </button>
-                      ))}
+                  {selectedSavedAddress ? (
+                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-4 text-left">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {selectedSavedAddress.label || "Default address"}
+                        </p>
+                        {selectedSavedAddress.isDefault && (
+                          <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {selectedSavedAddress.street}, {selectedSavedAddress.city}, {selectedSavedAddress.state} {selectedSavedAddress.zip}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {selectedSavedAddress.country} Ã‚Â· {selectedSavedAddress.phone}
+                      </p>
                     </div>
                   ) : null}
 
                   {addressMode === "new" ? (
                     <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-3 text-sm text-gray-600">
-                      Enter a fresh delivery address below. Saved address fields have been cleared.
+                      Enter a fresh delivery address below.
                     </div>
                   ) : null}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-black/10 bg-slate-50/70 px-4 py-3 text-sm text-gray-600">
+                  Add your delivery details below to continue checkout.
                 </div>
               )}
 
@@ -481,74 +474,88 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Input
-                  label="Full name"
-                  required
-                  value={shipping.name}
-                  onChange={(e) => setShipping({ ...shipping, name: e.target.value })}
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  required
-                  value={shipping.email}
-                  onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
-                />
-              </div>
-              <Input
-                label="Address"
-                required
-                value={shipping.address}
-                onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
-                disabled={addressMode === "saved"}
-              />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Input
-                  label="City"
-                  required
-                  value={shipping.city}
-                  onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
-                  disabled={addressMode === "saved"}
-                />
-                <Input
-                  label="State / Province"
-                  value={shipping.state}
-                  onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
-                  disabled={addressMode === "saved"}
-                />
-                <Input
-                  label="Country"
-                  required
-                  value={shipping.country}
-                  onChange={(e) => setShipping({ ...shipping, country: e.target.value })}
-                  disabled={addressMode === "saved"}
-                />
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Input
-                  label="ZIP / Postal code"
-                  value={shipping.zip}
-                  onChange={(e) => setShipping({ ...shipping, zip: e.target.value })}
-                  disabled={addressMode === "saved"}
-                />
-              </div>
-              <Input
-                label="Phone"
-                value={shipping.phone}
-                onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
-                placeholder="03xx xxxxxxx"
-                disabled={addressMode === "saved"}
-              />
-              {token && addressMode === "new" && (
-                <label className="flex items-center gap-2 text-sm text-gray-600">
-                  <input
-                    type="checkbox"
-                    checked={saveAddressForLater}
-                    onChange={(e) => setSaveAddressForLater(e.target.checked)}
+              {addressMode === "new" || savedAddresses.length === 0 ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      label="Full name"
+                      required
+                      value={shipping.name}
+                      onChange={(e) => setShipping({ ...shipping, name: e.target.value })}
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      required
+                      value={shipping.email}
+                      onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
+                    />
+                  </div>
+                  <Input
+                    label="Address"
+                    required
+                    value={shipping.address}
+                    onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
                   />
-                  Save this address for next checkout
-                </label>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      label="City"
+                      required
+                      value={shipping.city}
+                      onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
+                    />
+                    <Input
+                      label="State / Province"
+                      value={shipping.state}
+                      onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
+                    />
+                    <Input
+                      label="Country"
+                      required
+                      value={shipping.country}
+                      onChange={(e) => setShipping({ ...shipping, country: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Input
+                      label="ZIP / Postal code"
+                      value={shipping.zip}
+                      onChange={(e) => setShipping({ ...shipping, zip: e.target.value })}
+                    />
+                  </div>
+                  <Input
+                    label="Phone"
+                    value={shipping.phone}
+                    onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
+                    placeholder="03xx xxxxxxx"
+                  />
+                  {token && (
+                    <label className="flex items-center gap-2 text-sm text-gray-600">
+                      <input
+                        type="checkbox"
+                        checked={saveAddressForLater}
+                        onChange={(e) => setSaveAddressForLater(e.target.checked)}
+                      />
+                      Save this address for next checkout
+                    </label>
+                  )}
+                </>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Input
+                    label="Full name"
+                    required
+                    value={shipping.name}
+                    onChange={(e) => setShipping({ ...shipping, name: e.target.value })}
+                  />
+                  <Input
+                    label="Email"
+                    type="email"
+                    required
+                    value={shipping.email}
+                    onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
+                  />
+                </div>
               )}
             </div>
           )}
@@ -712,3 +719,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
