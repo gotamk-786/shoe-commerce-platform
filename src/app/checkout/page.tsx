@@ -49,6 +49,7 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [addressMode, setAddressMode] = useState<"saved" | "new">("new");
   const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [showSavedAddressList, setShowSavedAddressList] = useState(false);
   const [saveAddressForLater, setSaveAddressForLater] = useState(false);
   const [addressStatus, setAddressStatus] = useState<{ loading: boolean; error?: string }>({
     loading: false,
@@ -125,6 +126,7 @@ export default function CheckoutPage() {
           if (defaultAddress) {
             setSelectedAddressId(defaultAddress.id);
             setAddressMode("saved");
+            setShowSavedAddressList(false);
           } else {
             setAddressMode("new");
           }
@@ -152,6 +154,7 @@ export default function CheckoutPage() {
 
     setSelectedAddressId(addressId);
     setAddressMode("saved");
+    setShowSavedAddressList(false);
     setShipping((prev) => ({
       ...prev,
       address: selected.street,
@@ -408,6 +411,7 @@ export default function CheckoutPage() {
                         if (defaultAddress) {
                           applySavedAddress(defaultAddress.id);
                         }
+                        setShowSavedAddressList(false);
                       }}
                       className={`rounded-full px-4 py-2 text-sm font-medium ${
                         addressMode === "saved"
@@ -422,6 +426,7 @@ export default function CheckoutPage() {
                       onClick={() => {
                         setAddressMode("new");
                         setSelectedAddressId("");
+                        setShowSavedAddressList(false);
                         setSaveAddressForLater(false);
                         resetShippingAddressFields();
                       }}
@@ -435,25 +440,83 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  {selectedSavedAddress ? (
-                    <div className="rounded-2xl border border-black/10 bg-white px-4 py-4 text-left">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {selectedSavedAddress.label || "Default address"}
+                  {addressMode === "saved" && selectedSavedAddress ? (
+                    <>
+                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-4 text-left">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {selectedSavedAddress.label || "Default address"}
+                          </p>
+                          {selectedSavedAddress.isDefault && (
+                            <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-sm text-gray-600">
+                          {selectedSavedAddress.street}, {selectedSavedAddress.city}, {selectedSavedAddress.state}{" "}
+                          {selectedSavedAddress.zip}
                         </p>
-                        {selectedSavedAddress.isDefault && (
-                          <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                            Default
-                          </span>
-                        )}
+                        <p className="text-xs text-gray-500">
+                          {selectedSavedAddress.country} - {selectedSavedAddress.phone}
+                        </p>
+                        {savedAddresses.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setShowSavedAddressList((prev) => !prev)}
+                            className="mt-3 text-sm font-medium text-gray-900 underline underline-offset-4"
+                          >
+                            {showSavedAddressList ? "Hide saved addresses" : "Change address"}
+                          </button>
+                        ) : null}
                       </div>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {selectedSavedAddress.street}, {selectedSavedAddress.city}, {selectedSavedAddress.state} {selectedSavedAddress.zip}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {selectedSavedAddress.country} Ã‚Â· {selectedSavedAddress.phone}
-                      </p>
-                    </div>
+
+                      {showSavedAddressList ? (
+                        <div className="grid gap-3">
+                          {savedAddresses.map((address) => (
+                            <button
+                              key={address.id}
+                              type="button"
+                              onClick={() => applySavedAddress(address.id)}
+                              className={`rounded-2xl border px-4 py-4 text-left transition ${
+                                selectedAddressId === address.id
+                                  ? "border-black bg-black text-white"
+                                  : "border-black/10 bg-white text-gray-900"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
+                                {address.isDefault && (
+                                  <span
+                                    className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                                      selectedAddressId === address.id
+                                        ? "bg-white/15 text-white"
+                                        : "bg-black/5 text-gray-600"
+                                    }`}
+                                  >
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <p
+                                className={`mt-2 text-sm ${
+                                  selectedAddressId === address.id ? "text-white/80" : "text-gray-600"
+                                }`}
+                              >
+                                {address.street}, {address.city}, {address.state} {address.zip}
+                              </p>
+                              <p
+                                className={`text-xs ${
+                                  selectedAddressId === address.id ? "text-white/65" : "text-gray-500"
+                                }`}
+                              >
+                                {address.country} - {address.phone}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
 
                   {addressMode === "new" ? (
@@ -467,7 +530,6 @@ export default function CheckoutPage() {
                   Add your delivery details below to continue checkout.
                 </div>
               )}
-
               {addressStatus.error && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   Saved addresses could not be loaded. You can still enter a new address.
