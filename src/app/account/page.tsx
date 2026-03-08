@@ -51,6 +51,20 @@ const accountSections: { id: AccountSection; label: string; hint: string }[] = [
   { id: "security", label: "Security", hint: "Password & 2FA" },
 ];
 
+const CHECKOUT_ADDRESS_CACHE_KEY = "thrifty_checkout_addresses";
+
+const writeCheckoutAddressCache = (addresses: Address[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CHECKOUT_ADDRESS_CACHE_KEY, JSON.stringify(addresses));
+  } catch {
+    // ignore cache write failures
+  }
+};
+
 export default function AccountPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -190,6 +204,7 @@ export default function AccountPage() {
           const addressData = await fetchAddresses();
           if (!active) return;
           setAddresses(addressData || []);
+          writeCheckoutAddressCache(addressData || []);
           setSectionLoaded((prev) => ({ ...prev, addresses: true }));
         }
 
@@ -280,6 +295,7 @@ export default function AccountPage() {
 
       const refreshed = await fetchAddresses();
       setAddresses(refreshed);
+      writeCheckoutAddressCache(refreshed);
       resetAddressForm();
     } catch (err) {
       setError(handleApiError(err));
@@ -296,7 +312,11 @@ export default function AccountPage() {
     try {
       setAddressStatus({ saving: false, deletingId: addressId });
       await deleteAddress(addressId);
-      setAddresses((prev) => prev.filter((item) => item.id !== addressId));
+      setAddresses((prev) => {
+        const next = prev.filter((item) => item.id !== addressId);
+        writeCheckoutAddressCache(next);
+        return next;
+      });
       if (editingAddressId === addressId) {
         resetAddressForm();
       }

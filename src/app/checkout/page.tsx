@@ -19,6 +19,8 @@ import Input from "@/components/ui/input";
 import { clearCart } from "@/store/slices/cart-slice";
 import { Address } from "@/lib/types";
 
+const CHECKOUT_ADDRESS_CACHE_KEY = "thrifty_checkout_addresses";
+
 type Shipping = {
   name: string;
   email: string;
@@ -30,29 +32,66 @@ type Shipping = {
   phone: string;
 };
 
+const readCachedAddresses = (): Address[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CHECKOUT_ADDRESS_CACHE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Address[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCachedAddresses = (addresses: Address[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CHECKOUT_ADDRESS_CACHE_KEY, JSON.stringify(addresses));
+  } catch {
+    // ignore cache write failures
+  }
+};
+
+const getPreferredAddress = (addresses: Address[]) =>
+  addresses.find((entry) => entry.isDefault) ?? addresses[0] ?? null;
+
 export default function CheckoutPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const items = useAppSelector((state) => state.cart.items);
   const token = useAppSelector((state) => state.user.token);
+  const persistedProfile = useAppSelector((state) => state.user.profile);
+  const cachedAddresses = readCachedAddresses();
+  const preferredCachedAddress = getPreferredAddress(cachedAddresses);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [shipping, setShipping] = useState<Shipping>({
-    name: "",
-    email: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-    country: "",
-    phone: "",
+    name: persistedProfile?.name ?? "",
+    email: persistedProfile?.email ?? "",
+    address: preferredCachedAddress?.street ?? "",
+    city: preferredCachedAddress?.city ?? "",
+    state: preferredCachedAddress?.state ?? "",
+    zip: preferredCachedAddress?.zip ?? "",
+    country: preferredCachedAddress?.country ?? "",
+    phone: preferredCachedAddress?.phone ?? "",
   });
-  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
-  const [addressMode, setAddressMode] = useState<"saved" | "new">("new");
-  const [selectedAddressId, setSelectedAddressId] = useState("");
-  const [showSavedAddressList, setShowSavedAddressList] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>(cachedAddresses);
+  const [addressMode, setAddressMode] = useState<"saved" | "new">(
+    preferredCachedAddress ? "saved" : "new",
+  );
+  const [selectedAddressId, setSelectedAddressId] = useState(preferredCachedAddress?.id ?? "");
   const [saveAddressForLater, setSaveAddressForLater] = useState(false);
   const [addressStatus, setAddressStatus] = useState<{ loading: boolean; error?: string }>({
-    loading: false,
+    loading: Boolean(token) && cachedAddresses.length === 0,
   });
   const [paymentMethod, setPaymentMethod] = useState("easypaisa");
   const [note, setNote] = useState("");
@@ -77,6 +116,7 @@ export default function CheckoutPage() {
       ? savedAddresses.find((entry) => entry.id === selectedAddressId) ?? null
       : null;
   const total = Math.max(subTotal - discount, 0);
+
   const resetShippingAddressFields = () => {
     setShipping((prev) => ({
       ...prev,
@@ -122,11 +162,20 @@ export default function CheckoutPage() {
         if (addressesResult.status === "fulfilled") {
           const addresses = addressesResult.value || [];
           setSavedAddresses(addresses);
-          const defaultAddress = addresses.find((entry) => entry.isDefault) ?? addresses[0];
+          writeCachedAddresses(addresses);
+          const defaultAddress = getPreferredAddress(addresses);
           if (defaultAddress) {
             setSelectedAddressId(defaultAddress.id);
             setAddressMode("saved");
-            setShowSavedAddressList(false);
+            setShipping((prev) => ({
+              ...prev,
+              address: defaultAddress.street,
+              city: defaultAddress.city,
+              state: defaultAddress.state,
+              zip: defaultAddress.zip,
+              country: defaultAddress.country,
+              phone: defaultAddress.phone,
+            }));
           } else {
             setAddressMode("new");
           }
@@ -154,7 +203,6 @@ export default function CheckoutPage() {
 
     setSelectedAddressId(addressId);
     setAddressMode("saved");
-    setShowSavedAddressList(false);
     setShipping((prev) => ({
       ...prev,
       address: selected.street,
@@ -350,7 +398,11 @@ export default function CheckoutPage() {
             phone: shippingPayload.phone,
             isDefault: savedAddresses.length === 0,
           });
-          setSavedAddresses((prev) => [createdAddress, ...prev]);
+          setSavedAddresses((prev) => {
+            const next = [createdAddress, ...prev];
+            writeCachedAddresses(next);
+            return next;
+          });
         }
       }
 
@@ -411,7 +463,6 @@ export default function CheckoutPage() {
                         if (defaultAddress) {
                           applySavedAddress(defaultAddress.id);
                         }
-                        setShowSavedAddressList(false);
                       }}
                       className={`rounded-full px-4 py-2 text-sm font-medium ${
                         addressMode === "saved"
@@ -426,7 +477,6 @@ export default function CheckoutPage() {
                       onClick={() => {
                         setAddressMode("new");
                         setSelectedAddressId("");
-                        setShowSavedAddressList(false);
                         setSaveAddressForLater(false);
                         resetShippingAddressFields();
                       }}
@@ -460,62 +510,78 @@ export default function CheckoutPage() {
                         <p className="text-xs text-gray-500">
                           {selectedSavedAddress.country} - {selectedSavedAddress.phone}
                         </p>
-                        {savedAddresses.length > 1 ? (
-                          <button
-                            type="button"
-                            onClick={() => setShowSavedAddressList((prev) => !prev)}
-                            className="mt-3 text-sm font-medium text-gray-900 underline underline-offset-4"
-                          >
-                            {showSavedAddressList ? "Hide saved addresses" : "Change address"}
-                          </button>
-                        ) : null}
                       </div>
 
-                      {showSavedAddressList ? (
-                        <div className="grid gap-3">
-                          {savedAddresses.map((address) => (
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {savedAddresses.map((address) => {
+                          const isSelected = selectedAddressId === address.id;
+                          return (
                             <button
                               key={address.id}
                               type="button"
                               onClick={() => applySavedAddress(address.id)}
                               className={`rounded-2xl border px-4 py-4 text-left transition ${
-                                selectedAddressId === address.id
+                                isSelected
                                   ? "border-black bg-black text-white"
                                   : "border-black/10 bg-white text-gray-900"
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
-                                {address.isDefault && (
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3">
                                   <span
-                                    className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                                      selectedAddressId === address.id
-                                        ? "bg-white/15 text-white"
-                                        : "bg-black/5 text-gray-600"
+                                    className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${
+                                      isSelected
+                                        ? "border-white bg-white text-black"
+                                        : "border-black/20 bg-transparent text-transparent"
                                     }`}
                                   >
-                                    Default
+                                    *
                                   </span>
-                                )}
+                                  <div>
+                                    <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
+                                    <p
+                                      className={`mt-2 text-sm ${
+                                        isSelected ? "text-white/85" : "text-gray-600"
+                                      }`}
+                                    >
+                                      {address.street}, {address.city}, {address.state} {address.zip}
+                                    </p>
+                                    <p
+                                      className={`text-xs ${
+                                        isSelected ? "text-white/70" : "text-gray-500"
+                                      }`}
+                                    >
+                                      {address.country} - {address.phone}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                  {address.isDefault && (
+                                    <span
+                                      className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                                        isSelected
+                                          ? "bg-white/15 text-white"
+                                          : "bg-black/5 text-gray-600"
+                                      }`}
+                                    >
+                                      Default
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`rounded-full px-3 py-1 text-[11px] font-medium ${
+                                      isSelected
+                                        ? "bg-white text-black"
+                                        : "border border-black/10 bg-white text-gray-700"
+                                    }`}
+                                  >
+                                    {isSelected ? "Selected" : "Use this address"}
+                                  </span>
+                                </div>
                               </div>
-                              <p
-                                className={`mt-2 text-sm ${
-                                  selectedAddressId === address.id ? "text-white/80" : "text-gray-600"
-                                }`}
-                              >
-                                {address.street}, {address.city}, {address.state} {address.zip}
-                              </p>
-                              <p
-                                className={`text-xs ${
-                                  selectedAddressId === address.id ? "text-white/65" : "text-gray-500"
-                                }`}
-                              >
-                                {address.country} - {address.phone}
-                              </p>
                             </button>
-                          ))}
-                        </div>
-                      ) : null}
+                          );
+                        })}
+                      </div>
                     </>
                   ) : null}
 
