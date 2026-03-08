@@ -21,6 +21,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const items = useAppSelector((state) => state.cart.items);
+  const token = useAppSelector((state) => state.user.token);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [shipping, setShipping] = useState<Shipping>({
     name: "",
@@ -61,6 +62,10 @@ export default function CheckoutPage() {
       return;
     }
     try {
+      if (!token) {
+        router.push("/login");
+        return;
+      }
       setStatus({ loading: true });
       if (paymentSettings.paymentRequired && paymentMethod === "cod") {
         setStatus({ loading: false, error: "Please select a payment method to continue." });
@@ -96,6 +101,11 @@ export default function CheckoutPage() {
       </div>
       <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <form className="space-y-6" onSubmit={handleSubmit}>
+          {!token && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Log in first to place your order. Your cart will stay saved.
+            </div>
+          )}
           {step === 0 && (
             <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
               <h2 className="text-xl font-semibold text-gray-900">Shipping details</h2>
@@ -194,12 +204,16 @@ export default function CheckoutPage() {
 
           <div className="flex gap-3">
             {step > 0 && (
-              <Button variant="ghost" onClick={() => setStep((prev) => (prev - 1) as 0 | 1 | 2)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setStep((prev) => (prev - 1) as 0 | 1 | 2)}
+              >
                 Back
               </Button>
             )}
             <Button variant="primary" type="submit" disabled={status.loading}>
-              {step < 2 ? "Continue" : "Place order"}
+              {!token ? "Log in to continue" : step < 2 ? "Continue" : "Place order"}
             </Button>
           </div>
           {status.error && (

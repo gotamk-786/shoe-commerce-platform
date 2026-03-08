@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Category } from "@/lib/types";
 import Button from "../ui/button";
 
@@ -18,12 +18,18 @@ export default function FilterBar({
   categories,
   onChange,
   loading,
+  initialFilters = {},
 }: {
   categories: Category[];
   onChange: (filters: ProductFilters) => void;
   loading?: boolean;
+  initialFilters?: ProductFilters;
 }) {
-  const [filters, setFilters] = useState<ProductFilters>({});
+  const [filters, setFilters] = useState<ProductFilters>(initialFilters);
+
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
 
   const update = (next: Partial<ProductFilters>) => {
     const merged = { ...filters, ...next };
@@ -110,7 +116,13 @@ export default function FilterBar({
           </select>
         </div>
         <div className="flex justify-end">
-          <Button variant="ghost" onClick={() => update({})}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setFilters({});
+              onChange({});
+            }}
+          >
             Reset
           </Button>
         </div>

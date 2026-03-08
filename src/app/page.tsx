@@ -1,13 +1,24 @@
+import {
+  fetchServerCategories,
+  fetchServerFeaturedProducts,
+  fetchServerMarketingSettings,
+} from "@/lib/public-server";
 import MarketingShowcase from "@/components/sections/marketing-showcase";
 import FeaturedProducts from "@/components/sections/featured-products";
 import CategoryStories from "@/components/sections/category-stories";
 
-export default function Home() {
+export default async function Home() {
+  const [marketingSettings, featuredProducts, categories] = await Promise.all([
+    fetchServerMarketingSettings(),
+    fetchServerFeaturedProducts().catch(() => []),
+    fetchServerCategories().catch(() => []),
+  ]);
+
   return (
     <div className="space-y-14 pb-24">
-      <MarketingShowcase />
-      <FeaturedProducts />
-      <CategoryStories />
+      <MarketingShowcase initialSettings={marketingSettings} />
+      <FeaturedProducts initialProducts={featuredProducts} />
+      <CategoryStories initialCategories={categories} />
       <section className="mx-auto max-w-6xl px-6">
         <div className="glass fade-border relative overflow-hidden rounded-3xl px-6 py-10 md:px-10">
           <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

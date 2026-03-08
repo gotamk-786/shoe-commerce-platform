@@ -29,10 +29,12 @@ export default function Button({
   icon,
   full,
   className,
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <motion.button
+      type={type}
       whileTap={{ scale: 0.98 }}
       whileHover={{ y: -1 }}
       className={cn(base, variants[variant], full && "w-full", className)}

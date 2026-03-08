@@ -6,12 +6,20 @@ import { Product } from "@/lib/types";
 import ProductGrid from "../product/product-grid";
 import SectionHeading from "../ui/section-heading";
 
-export default function FeaturedProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function FeaturedProducts({
+  initialProducts = [],
+}: {
+  initialProducts?: Product[];
+}) {
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [loading, setLoading] = useState(initialProducts.length === 0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initialProducts.length > 0) {
+      return;
+    }
+
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -25,7 +33,7 @@ export default function FeaturedProducts() {
       }
     };
     load();
-  }, []);
+  }, [initialProducts]);
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">

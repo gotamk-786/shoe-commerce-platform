@@ -7,9 +7,13 @@ import SectionHeading from "../ui/section-heading";
 import Skeleton from "../ui/skeleton";
 import Image from "next/image";
 
-export default function CategoryStories() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function CategoryStories({
+  initialCategories = [],
+}: {
+  initialCategories?: Category[];
+}) {
+  const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [loading, setLoading] = useState(initialCategories.length === 0);
   const [error, setError] = useState<string | null>(null);
   const fallbackStories = [
     {
@@ -36,6 +40,10 @@ export default function CategoryStories() {
   ];
 
   useEffect(() => {
+    if (initialCategories.length > 0) {
+      return;
+    }
+
     const load = async () => {
       setLoading(true);
       setError(null);
@@ -49,7 +57,7 @@ export default function CategoryStories() {
       }
     };
     load();
-  }, []);
+  }, [initialCategories]);
 
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:py-24">

@@ -95,8 +95,12 @@ const fallbackSettings: MarketingSettings = {
   ],
 };
 
-export default function MarketingShowcase() {
-  const [settings, setSettings] = useState<MarketingSettings>(fallbackSettings);
+export default function MarketingShowcase({
+  initialSettings,
+}: {
+  initialSettings?: MarketingSettings | null;
+}) {
+  const [settings, setSettings] = useState<MarketingSettings>(initialSettings ?? fallbackSettings);
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -129,10 +133,14 @@ export default function MarketingShowcase() {
   ];
 
   useEffect(() => {
+    if (initialSettings) {
+      return;
+    }
+
     fetchMarketingSettings()
       .then((data) => setSettings(data))
       .catch(() => {});
-  }, []);
+  }, [initialSettings]);
 
   useEffect(() => {
     if (paused || slides.length <= 1) return;
@@ -156,9 +164,9 @@ export default function MarketingShowcase() {
             <div className="relative flex-1 overflow-hidden">
               <div className="flex animate-[marquee_14s_linear_infinite] items-center gap-6 whitespace-nowrap text-sm font-medium">
                 <span>{settings.promo.text}</span>
-                <span className="text-white/50">•</span>
+                <span className="text-white/50">/</span>
                 <span>{settings.promo.text}</span>
-                <span className="text-white/50">•</span>
+                <span className="text-white/50">/</span>
                 <span>{settings.promo.text}</span>
               </div>
             </div>
@@ -326,7 +334,7 @@ export default function MarketingShowcase() {
                 <h3 className="text-2xl font-semibold tracking-tight">{tile.title}</h3>
                 {tile.subtitle && <p className="mt-1 text-sm text-white/80">{tile.subtitle}</p>}
                 <span className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-white">
-                  {tile.ctaLabel ?? "Shop"} <span aria-hidden="true">→</span>
+                  {tile.ctaLabel ?? "Shop"} <span aria-hidden="true">-&gt;</span>
                 </span>
               </div>
             </Link>
@@ -385,7 +393,7 @@ export default function MarketingShowcase() {
                   <p className="text-sm font-semibold text-gray-900">{look.title}</p>
                   <p className="text-xs text-gray-600">{look.caption}</p>
                 </div>
-                <span className="text-sm text-gray-500 transition group-hover:text-gray-900">→</span>
+                <span className="text-sm text-gray-500 transition group-hover:text-gray-900">-&gt;</span>
               </div>
             ))}
           </div>

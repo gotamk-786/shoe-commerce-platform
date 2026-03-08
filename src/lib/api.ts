@@ -793,3 +793,12 @@ export const adminUploadAsset = async (file: File): Promise<{ url: string; publi
 export const uploadAvatar = async (file: File): Promise<{ url: string; publicId: string }> => {
   return uploadMultipartImage("/uploads", file);
 };
+
+export const prefetchStorefrontData = async () => {
+  await Promise.allSettled([
+    fetchMarketingSettings(),
+    fetchFeaturedProducts(),
+    fetchCategories(),
+    fetchProducts({ page: 1, limit: 9 }),
+  ]);
+};
