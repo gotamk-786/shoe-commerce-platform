@@ -64,15 +64,17 @@ export default function AccountPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const token = useAppSelector((state) => state.user.token);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const persistedProfile = useAppSelector((state) => state.user.profile);
+  const [profile, setProfile] = useState<UserProfile | null>(persistedProfile);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!persistedProfile);
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [name, setName] = useState(persistedProfile?.name ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(persistedProfile?.avatarUrl ?? "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [coverUrl, setCoverUrl] = useState("");
+  const [coverUrl, setCoverUrl] = useState(persistedProfile?.coverUrl ?? "");
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -143,26 +145,52 @@ export default function AccountPage() {
   useEffect(() => {
     if (!token) {
       setLoading(false);
+      setOrdersLoading(false);
       return;
     }
 
-    setLoading(true);
-    const load = async () => {
+    let active = true;
+
+    const loadProfile = async () => {
       try {
-        const [user, data] = await Promise.all([fetchProfile(), fetchOrders()]);
+        const user = await fetchProfile();
+        if (!active) return;
         setProfile(user);
         setName(user.name);
         setAvatarUrl(user.avatarUrl ?? "");
         setCoverUrl(user.coverUrl ?? "");
-        setOrders(data || []);
         setTwoFactorEnabled(user.twoFactorEnabled ?? false);
       } catch (err) {
+        if (!active) return;
         setError(handleApiError(err));
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     };
-    load();
+
+    const loadOrders = async () => {
+      try {
+        const data = await fetchOrders();
+        if (!active) return;
+        setOrders(data || []);
+      } catch (err) {
+        if (!active) return;
+        setError(handleApiError(err));
+      } finally {
+        if (active) {
+          setOrdersLoading(false);
+        }
+      }
+    };
+
+    void loadProfile();
+    void loadOrders();
+
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   useEffect(() => {
@@ -307,7 +335,7 @@ export default function AccountPage() {
               </h1>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                 <span className="rounded-full border border-black/10 bg-white px-3 py-1">
-                  {orders.length} orders
+                  {ordersLoading ? "Loading orders..." : `${orders.length} orders`}
                 </span>
                 <span className="rounded-full border border-black/10 bg-white px-3 py-1">
                   {formatCurrency(totalSpend)} spent

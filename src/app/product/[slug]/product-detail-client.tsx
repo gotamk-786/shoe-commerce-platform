@@ -23,12 +23,14 @@ type Props = {
   product: Product | null;
   relatedProducts: Product[];
   initialReviews: ReviewSummary | null;
+  errorMessage?: string;
 };
 
 export default function ProductDetailClient({
   product,
   relatedProducts,
   initialReviews,
+  errorMessage,
 }: Props) {
   const [variant, setVariant] = useState<ProductVariant | undefined>(product?.variants?.[0]);
   const [related, setRelated] = useState<Product[]>(relatedProducts);
@@ -149,7 +151,7 @@ export default function ProductDetailClient({
       <div className="mx-auto max-w-3xl px-6 py-20 text-center">
         <p className="text-lg font-semibold text-gray-900">Product unavailable</p>
         <p className="mt-2 text-sm text-gray-600">
-          {error || "We could not fetch this product. Try again or browse the collection."}
+          {errorMessage || error || "We could not fetch this product. Try again or browse the collection."}
         </p>
       </div>
     );
@@ -160,6 +162,7 @@ export default function ProductDetailClient({
       <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr]">
         <ProductGallery images={variant?.images?.length ? variant.images : product.images} />
         <ProductInfo
+          key={`${product.id}-${variant?.id ?? "base"}`}
           product={product}
           selectedVariant={variant}
           onVariantChange={setVariant}

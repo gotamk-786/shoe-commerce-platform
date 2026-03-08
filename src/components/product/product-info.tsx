@@ -25,9 +25,21 @@ export default function ProductInfo({
   onToggleWishlist,
 }: Props) {
   const dispatch = useAppDispatch();
-  const [size, setSize] = useState<VariantSize | undefined>(
-    selectedVariant?.sizes?.[0],
-  );
+  const [size, setSize] = useState<VariantSize | undefined>(() => {
+    if (selectedVariant?.sizes?.length) {
+      return selectedVariant.sizes[0];
+    }
+
+    if (product.sizes?.length) {
+      return {
+        id: product.sizes[0],
+        sizeUS: product.sizes[0],
+        stock: product.stock,
+      };
+    }
+
+    return undefined;
+  });
 
   const priceBase = selectedVariant?.priceOverride ?? product.price;
   const finalPrice = useMemo(
@@ -36,6 +48,9 @@ export default function ProductInfo({
   );
 
   const handleAdd = () => {
+    if (selectedVariant?.sizes?.length && !size) {
+      return;
+    }
     dispatch(
       addItem({
         product,
@@ -177,7 +192,7 @@ export default function ProductInfo({
           <Button
             variant="primary"
             className="flex-1"
-            disabled={(size?.stock ?? product.stock) <= 0}
+            disabled={(size?.stock ?? product.stock) <= 0 || Boolean(selectedVariant?.sizes?.length && !size)}
             onClick={handleAdd}
           >
             Add to Cart
