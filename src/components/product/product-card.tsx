@@ -41,10 +41,14 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
           <div className="absolute right-3 top-3 flex flex-col gap-2">
             {product.discount ? (
-              <Pill className="bg-black text-white">{product.discount}% off</Pill>
+              <Pill className="border-0 bg-rose-600 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-white shadow-[0_12px_30px_rgba(225,29,72,0.28)]">
+                {product.discount}% off
+              </Pill>
             ) : null}
             {product.condition && (
-              <Pill className="bg-white/80 text-gray-800">{product.condition}</Pill>
+              <Pill className="border border-black/10 bg-white px-3 py-1 font-semibold uppercase tracking-[0.2em] text-gray-900 shadow-sm">
+                {product.condition}
+              </Pill>
             )}
           </div>
         </div>

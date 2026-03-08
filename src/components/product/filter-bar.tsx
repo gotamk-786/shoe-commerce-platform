@@ -10,9 +10,21 @@ export type ProductFilters = {
   size?: string;
   sort?: string;
   gender?: string;
-  color?: string;
   q?: string;
 };
+
+const sizeOptions = [
+  "EU 36",
+  "EU 37",
+  "EU 38",
+  "EU 39",
+  "EU 40",
+  "EU 41",
+  "EU 42",
+  "EU 43",
+  "EU 44",
+  "EU 45",
+];
 
 export default function FilterBar({
   categories,
@@ -76,22 +88,19 @@ export default function FilterBar({
             <option value="used">Used</option>
             <option value="refurbished">Refurbished</option>
           </select>
-          <input
-            type="text"
-            placeholder="Size"
+          <select
             className={controlClass}
             value={filters.size ?? ""}
             onChange={(e) => update({ size: e.target.value || undefined })}
             disabled={loading}
-          />
-          <input
-            type="text"
-            placeholder="Color"
-            className={controlClass}
-            value={filters.color ?? ""}
-            onChange={(e) => update({ color: e.target.value || undefined })}
-            disabled={loading}
-          />
+          >
+            <option value="">All sizes</option>
+            {sizeOptions.map((size) => (
+              <option key={size} value={size.replace("EU ", "")}>
+                {size}
+              </option>
+            ))}
+          </select>
           <select
             className={controlClass}
             value={filters.gender ?? ""}

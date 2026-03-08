@@ -44,7 +44,6 @@ export default function CollectionClient({
       size: searchParams.get("size") || undefined,
       sort: searchParams.get("sort") || undefined,
       gender: searchParams.get("gender") || undefined,
-      color: searchParams.get("color") || undefined,
       q: searchParams.get("q") || undefined,
     };
   }, [searchParams]);

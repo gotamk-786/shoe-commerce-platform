@@ -1,7 +1,6 @@
 import axios from "axios";
 import {
   AdminProduct,
-  CartItem,
   Order,
   PaginatedResponse,
   Product,
@@ -529,7 +528,14 @@ export const fetchOrderStats = async (): Promise<{
 };
 
 export const createOrder = async (payload: {
-  items: CartItem[];
+  items: Array<{
+    productId: string;
+    variantId?: string;
+    quantity: number;
+    sizeUS?: string;
+    sizeEU?: string;
+    image?: string;
+  }>;
   shipping: Record<string, string>;
   paymentMethod: string;
   couponCode?: string;

@@ -15,6 +15,7 @@ type Shipping = {
   address: string;
   city: string;
   country: string;
+  phone: string;
 };
 
 export default function CheckoutPage() {
@@ -29,6 +30,7 @@ export default function CheckoutPage() {
     address: "",
     city: "",
     country: "",
+    phone: "",
   });
   const [paymentMethod, setPaymentMethod] = useState("easypaisa");
   const [note, setNote] = useState("");
@@ -71,9 +73,27 @@ export default function CheckoutPage() {
         setStatus({ loading: false, error: "Please select a payment method to continue." });
         return;
       }
+      const sanitizedItems = items
+        .filter((item) => item.productId)
+        .map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId || undefined,
+          quantity: Number(item.quantity) || 1,
+          sizeUS: item.sizeUS || undefined,
+          sizeEU: item.sizeEU || undefined,
+          image: item.image || undefined,
+        }));
+
+      if (sanitizedItems.length === 0) {
+        setStatus({ loading: false, error: "Your cart is empty or contains invalid items." });
+        return;
+      }
+
       await createOrder({
-        items,
-        shipping: { ...shipping, note },
+        items: sanitizedItems,
+        shipping: Object.fromEntries(
+          Object.entries({ ...shipping, note }).filter(([, value]) => value.trim().length > 0),
+        ),
         paymentMethod,
         couponCode: couponCode || undefined,
       });
@@ -144,6 +164,12 @@ export default function CheckoutPage() {
                   onChange={(e) => setShipping({ ...shipping, country: e.target.value })}
                 />
               </div>
+              <Input
+                label="Phone"
+                value={shipping.phone}
+                onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
+                placeholder="03xx xxxxxxx"
+              />
             </div>
           )}
 

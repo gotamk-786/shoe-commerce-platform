@@ -17,7 +17,6 @@ export default async function CollectionPage({ searchParams }: CollectionPagePro
     size: pickParam(resolvedSearchParams.size),
     sort: pickParam(resolvedSearchParams.sort),
     gender: pickParam(resolvedSearchParams.gender),
-    color: pickParam(resolvedSearchParams.color),
     q: pickParam(resolvedSearchParams.q),
   };
 

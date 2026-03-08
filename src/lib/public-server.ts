@@ -1,4 +1,10 @@
-import { Category, MarketingSettings, PaginatedResponse, Product } from "./types";
+import {
+  Category,
+  MarketingSettings,
+  PaginatedResponse,
+  Product,
+  ReviewSummary,
+} from "./types";
 
 const DEFAULT_API_BASE = "https://shoe-commerce-platform.onrender.com";
 
@@ -52,4 +58,12 @@ export const fetchServerProductsPage = async (params: URLSearchParams) => {
     `/products${query ? `?${query}` : ""}`,
     60,
   );
+};
+
+export const fetchServerProductBySlug = async (slug: string) => {
+  return fetchPublicJson<Product>(`/products/${slug}`, 120);
+};
+
+export const fetchServerReviews = async (productId: string) => {
+  return fetchPublicJson<ReviewSummary>(`/reviews?productId=${encodeURIComponent(productId)}`, 60);
 };
