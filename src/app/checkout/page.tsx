@@ -470,7 +470,7 @@ export default function CheckoutPage() {
                           : "border border-black/10 bg-white text-gray-700"
                       }`}
                     >
-                      Use default address
+                      Saved addresses
                     </button>
                     <button
                       type="button"
@@ -492,24 +492,8 @@ export default function CheckoutPage() {
 
                   {addressMode === "saved" && selectedSavedAddress ? (
                     <>
-                      <div className="rounded-2xl border border-black/10 bg-white px-4 py-4 text-left">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {selectedSavedAddress.label || "Default address"}
-                          </p>
-                          {selectedSavedAddress.isDefault && (
-                            <span className="rounded-full bg-black/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                              Default
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-2 text-sm text-gray-600">
-                          {selectedSavedAddress.street}, {selectedSavedAddress.city}, {selectedSavedAddress.state}{" "}
-                          {selectedSavedAddress.zip}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {selectedSavedAddress.country} - {selectedSavedAddress.phone}
-                        </p>
+                      <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-3 text-sm text-gray-600">
+                        Choose a delivery address. Your default address is already selected.
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2">
@@ -529,13 +513,14 @@ export default function CheckoutPage() {
                               <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-start gap-3">
                                   <span
-                                    className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] ${
+                                    className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-semibold ${
                                       isSelected
                                         ? "border-white bg-white text-black"
                                         : "border-black/20 bg-transparent text-transparent"
                                     }`}
+                                    aria-hidden="true"
                                   >
-                                    *
+                                    ✓
                                   </span>
                                   <div>
                                     <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
