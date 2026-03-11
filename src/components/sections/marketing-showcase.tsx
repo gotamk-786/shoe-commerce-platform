@@ -81,7 +81,7 @@ const fallbackSettings: MarketingSettings = {
       ctaLabel: "Shop",
       ctaHref: "/collection",
       imageUrl:
-        "https://images.unsplash.com/photo-1518544887878-4f6d9b5c0cb3?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1514989940723-e8e51635b782?auto=format&fit=crop&w=1200&q=80",
     },
     {
       id: "tile-4",
@@ -104,6 +104,7 @@ export default function MarketingShowcase({
   const [settings, setSettings] = useState<MarketingSettings>(initialSettings ?? fallbackSettings);
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [failedTileImages, setFailedTileImages] = useState<Record<string, boolean>>({});
 
   const slides = settings.hero.slides;
   const hasSlides = slides.length > 0;
@@ -131,6 +132,12 @@ export default function MarketingShowcase({
       image:
         "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1200&q=80",
     },
+  ];
+  const tileFallbacks = [
+    "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=1200&q=80",
+    "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1200&q=80",
   ];
 
   useEffect(() => {
@@ -321,14 +328,50 @@ export default function MarketingShowcase({
               : index === 3
               ? "lg:col-span-12 h-[320px]"
               : "lg:col-span-5 h-[200px]";
+          const showFallbackArt = failedTileImages[tile.id] || !tile.imageUrl;
+          const fallbackImage = tileFallbacks[index % tileFallbacks.length];
 
           return (
             <Link
               key={tile.id}
               href={tile.ctaHref || "/collection"}
-              className={`group relative overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] ${layout}`}
+              className={`group relative overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] transition duration-300 hover:-translate-y-1 ${layout}`}
             >
-              <Image src={tile.imageUrl} alt={tile.title} fill className="object-cover" unoptimized />
+              {showFallbackArt ? (
+                <>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.28),_transparent_28%),linear-gradient(135deg,_#091224_0%,_#1f3c88_48%,_#f56b6b_100%)]" />
+                  <div className="absolute -right-10 top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl transition duration-500 group-hover:scale-110" />
+                  <div className="absolute left-8 top-8 h-24 w-24 animate-[float_6s_ease-in-out_infinite] rounded-[2rem] border border-white/20 bg-white/10 backdrop-blur-sm" />
+                  <div className="absolute bottom-10 right-10 h-16 w-40 rotate-[-12deg] rounded-full border border-white/15 bg-black/10" />
+                  <div className="absolute inset-x-6 top-6 flex items-center justify-between text-white/75">
+                    <span className="rounded-full border border-white/20 px-3 py-1 text-[11px] uppercase tracking-[0.3em]">
+                      {tile.tag ?? "Featured"}
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.3em] text-white/60">
+                      Curated
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <Image
+                  src={tile.imageUrl}
+                  alt={tile.title}
+                  fill
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                  unoptimized
+                  onError={() =>
+                    setFailedTileImages((prev) => ({
+                      ...prev,
+                      [tile.id]: true,
+                    }))
+                  }
+                />
+              )}
+              {showFallbackArt && (
+                <div className="absolute inset-0 opacity-20 mix-blend-screen">
+                  <Image src={fallbackImage} alt="" fill className="object-cover" unoptimized />
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute inset-x-6 bottom-6 text-white">
                 {tile.tag && (
@@ -412,6 +455,16 @@ export default function MarketingShowcase({
           }
           100% {
             transform: translateX(-33%);
+          }
+        }
+
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-10px);
           }
         }
       `}</style>
