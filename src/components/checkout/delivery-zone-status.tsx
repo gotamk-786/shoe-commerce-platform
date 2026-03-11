@@ -43,7 +43,6 @@ export default function DeliveryZoneStatus({ status, loading, error }: Props) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <span className="font-semibold">{status.zone.name}</span>
         <span>Shipping: {status.zone.shippingFee === 0 ? "Free" : formatCurrency(status.zone.shippingFee)}</span>
-        <span>ETA: {status.zone.estimatedDeliveryTime}</span>
         <span>{status.zone.codAvailable ? "COD available" : "COD unavailable"}</span>
       </div>
     </div>
