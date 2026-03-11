@@ -84,13 +84,10 @@ export default function AddressPicker({
         </div>
       ) : null}
 
-      {lat !== undefined && lng !== undefined ? (
-        <AddressPickerMap lat={lat} lng={lng} onChange={onMarkerChange} />
-      ) : (
-        <div className="flex h-[400px] items-center justify-center rounded-[24px] border border-dashed border-black/10 bg-white text-sm text-gray-500">
-          Search or use your current location to place the map marker.
-        </div>
-      )}
+      <AddressPickerMap lat={lat} lng={lng} onChange={onMarkerChange} />
+      <p className="text-xs text-gray-500">
+        Search, use current location, or click anywhere on the map to place the delivery pin.
+      </p>
     </div>
   );
 }

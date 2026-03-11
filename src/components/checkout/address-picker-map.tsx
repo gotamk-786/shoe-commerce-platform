@@ -5,11 +5,13 @@ import L from "leaflet";
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet";
 
 type Props = {
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   onChange: (coords: { lat: number; lng: number }) => void;
   heightClassName?: string;
 };
+
+const DEFAULT_CENTER: [number, number] = [24.8607, 67.0011];
 
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -21,10 +23,11 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-const RecenterMap = ({ lat, lng }: { lat: number; lng: number }) => {
+const RecenterMap = ({ lat, lng }: { lat?: number; lng?: number }) => {
   const map = useMap();
 
   useEffect(() => {
+    if (lat === undefined || lng === undefined) return;
     map.setView([lat, lng], Math.max(map.getZoom(), 15), {
       animate: true,
     });
@@ -52,11 +55,14 @@ export default function AddressPickerMap({
   onChange,
   heightClassName = "h-[400px]",
 }: Props) {
+  const hasMarker = lat !== undefined && lng !== undefined;
+  const center: [number, number] = hasMarker ? [lat, lng] : DEFAULT_CENTER;
+
   return (
     <div className={`overflow-hidden rounded-[24px] border border-black/10 ${heightClassName}`}>
       <MapContainer
-        center={[lat, lng]}
-        zoom={15}
+        center={center}
+        zoom={hasMarker ? 15 : 11}
         scrollWheelZoom={false}
         className="h-full w-full"
       >
@@ -64,21 +70,23 @@ export default function AddressPickerMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <Marker
-          draggable
-          position={[lat, lng]}
-          icon={defaultIcon}
-          eventHandlers={{
-            dragend(event) {
-              const marker = event.target as L.Marker;
-              const position = marker.getLatLng();
-              onChange({
-                lat: position.lat,
-                lng: position.lng,
-              });
-            },
-          }}
-        />
+        {hasMarker ? (
+          <Marker
+            draggable
+            position={[lat, lng]}
+            icon={defaultIcon}
+            eventHandlers={{
+              dragend(event) {
+                const marker = event.target as L.Marker;
+                const position = marker.getLatLng();
+                onChange({
+                  lat: position.lat,
+                  lng: position.lng,
+                });
+              },
+            }}
+          />
+        ) : null}
         <RecenterMap lat={lat} lng={lng} />
         <MapEvents onChange={onChange} />
       </MapContainer>

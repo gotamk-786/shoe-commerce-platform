@@ -209,20 +209,22 @@ export default function CheckoutPage() {
 
   const applySuggestion = async (suggestion: GeocodedAddressSuggestion) => {
     setAutocompleteResults([]);
-    updateDraft({
-      fullAddress: suggestion.fullAddress,
-      houseNo: suggestion.houseNo || "",
-      street: suggestion.street || draft.street,
-      landmark: suggestion.landmark || draft.landmark,
-      area: suggestion.area || "",
-      city: suggestion.city || "",
-      state: suggestion.state || "",
-      postalCode: suggestion.postalCode || "",
-      country: suggestion.country || draft.country,
+    setAutocompleteStatus({ loading: false, error: undefined });
+    setDraft((prev) => ({
+      ...prev,
+      fullAddress: suggestion.fullAddress || prev.fullAddress,
+      houseNo: suggestion.houseNo || prev.houseNo || "",
+      street: suggestion.street || prev.street,
+      landmark: suggestion.landmark || prev.landmark || "",
+      area: suggestion.area || prev.area || "",
+      city: suggestion.city || prev.city,
+      state: suggestion.state || prev.state || "",
+      postalCode: suggestion.postalCode || prev.postalCode || "",
+      country: suggestion.country || prev.country,
       lat: suggestion.lat,
       lng: suggestion.lng,
       placeId: suggestion.placeId,
-    });
+    }));
     await runZoneValidation(suggestion.lat, suggestion.lng, suggestion.city);
   };
   useEffect(() => {
@@ -329,7 +331,10 @@ export default function CheckoutPage() {
       const suggestion = await reverseGeocodeAddress(lat, lng);
       await applySuggestion(suggestion);
     } catch (error) {
-      setZoneError(handleApiError(error));
+      setAutocompleteStatus({
+        loading: false,
+        error: "Map pin placed, but exact address details could not be fetched automatically.",
+      });
       await runZoneValidation(lat, lng, draft.city);
     }
   };
@@ -341,8 +346,22 @@ export default function CheckoutPage() {
     }
 
     setLocationLoading(true);
+    let resolved = false;
+    const timeoutId = window.setTimeout(() => {
+      if (resolved) return;
+      resolved = true;
+      setLocationLoading(false);
+      setAutocompleteStatus({
+        loading: false,
+        error: "Location request timed out. Search the address or place the pin manually on the map.",
+      });
+    }, 16000);
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        if (resolved) return;
+        resolved = true;
+        window.clearTimeout(timeoutId);
         try {
           const suggestion = await reverseGeocodeAddress(position.coords.latitude, position.coords.longitude);
           await applySuggestion(suggestion);
@@ -353,6 +372,9 @@ export default function CheckoutPage() {
         }
       },
       (error) => {
+        if (resolved) return;
+        resolved = true;
+        window.clearTimeout(timeoutId);
         setLocationLoading(false);
         setAutocompleteStatus({
           loading: false,
