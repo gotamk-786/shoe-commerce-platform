@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandLogo from "../ui/brand-logo";
 
 export default function Footer() {
   return (
@@ -7,10 +8,13 @@ export default function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-lg font-semibold">
-              <div className="h-9 w-9 rounded-full bg-black text-white grid place-items-center text-sm font-bold">
-                TS
+              <BrandLogo className="h-11 w-11" />
+              <div className="leading-none">
+                <span className="block">Thrifty Shoes</span>
+                <span className="block pt-1 text-[10px] font-medium uppercase tracking-[0.28em] text-gray-500">
+                  Footwear
+                </span>
               </div>
-              <span>Thrifty Shoes</span>
             </div>
             <p className="text-sm text-gray-600">
               Footwear reimagined with Apple-level precision. Crafted for movement,

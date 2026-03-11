@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/format";
 import { fetchWishlist } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import BrandLogo from "../ui/brand-logo";
 
 const HeartIcon = ({ className = "h-4 w-4" }: { className?: string }) => (
   <svg
@@ -119,10 +120,13 @@ export default function Navbar() {
           <div className="glass fade-border flex flex-col gap-3 rounded-3xl px-5 py-4 md:flex-row md:items-center md:justify-between md:rounded-2xl md:px-4 md:py-3">
             <div className="flex items-center justify-between md:justify-start md:gap-8">
               <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-black text-sm font-bold text-white">
-                  TS
+                <BrandLogo compact />
+                <div className="leading-none">
+                  <span className="block">Thrifty Shoes</span>
+                  <span className="block text-[10px] font-medium uppercase tracking-[0.28em] text-gray-500">
+                    Footwear
+                  </span>
                 </div>
-                <span>Thrifty Shoes</span>
               </Link>
               <button
                 type="button"
