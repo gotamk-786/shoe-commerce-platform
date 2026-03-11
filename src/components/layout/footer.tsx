@@ -8,13 +8,7 @@ export default function Footer() {
         <div className="grid gap-8 md:grid-cols-4">
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-lg font-semibold">
-              <BrandLogo className="h-11 w-11" />
-              <div className="leading-none">
-                <span className="block">Thrifty Shoes</span>
-                <span className="block pt-1 text-[10px] font-medium uppercase tracking-[0.28em] text-gray-500">
-                  Footwear
-                </span>
-              </div>
+              <BrandLogo />
             </div>
             <p className="text-sm text-gray-600">
               Footwear reimagined with Apple-level precision. Crafted for movement,

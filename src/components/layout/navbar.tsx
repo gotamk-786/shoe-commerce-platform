@@ -119,14 +119,8 @@ export default function Navbar() {
         <div className="mx-auto max-w-6xl px-4 py-4 md:px-6">
           <div className="glass fade-border flex flex-col gap-3 rounded-3xl px-5 py-4 md:flex-row md:items-center md:justify-between md:rounded-2xl md:px-4 md:py-3">
             <div className="flex items-center justify-between md:justify-start md:gap-8">
-              <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
+              <Link href="/" className="flex items-center text-lg font-semibold">
                 <BrandLogo compact />
-                <div className="leading-none">
-                  <span className="block">Thrifty Shoes</span>
-                  <span className="block text-[10px] font-medium uppercase tracking-[0.28em] text-gray-500">
-                    Footwear
-                  </span>
-                </div>
               </Link>
               <button
                 type="button"

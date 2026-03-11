@@ -12,74 +12,58 @@ export default function BrandLogo({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[22px] border border-[#0f172a]/10 bg-[linear-gradient(145deg,#f8fafc_0%,#dbeafe_100%)] shadow-[0_12px_30px_rgba(15,23,42,0.14)]",
-        compact ? "h-10 w-10" : "h-12 w-12",
+        "inline-flex flex-col items-center justify-center rounded-[26px] border border-[#0f172a]/10 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-3 py-2 shadow-[0_14px_36px_rgba(15,23,42,0.1)]",
+        compact ? "min-w-[108px]" : "min-w-[150px]",
         className,
       )}
-      aria-hidden="true"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.9),transparent_42%)]" />
-      <div className="absolute inset-x-1.5 bottom-1.5 h-3 rounded-full bg-[#14b8a6]/10 blur-md" />
       <svg
-        viewBox="0 0 64 64"
-        className="absolute inset-0 h-full w-full"
+        viewBox="0 0 210 78"
+        className={compact ? "h-10 w-[92px]" : "h-14 w-[132px]"}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        aria-hidden="true"
       >
         <path
-          d="M10 39.4C13.9 30.3 22.9 24.4 33.4 23.9L45.1 23.2C48 23.1 50.5 25 51.2 27.8L53.3 36.1C53.9 38.6 52.5 41.2 50 41.9L38.7 45C34.8 46 30.8 46.2 26.8 45.4L13.8 42.8C10.7 42.1 9 40.8 10 39.4Z"
-          fill="#0F172A"
+          d="M29 55C34 42 45.8 33.4 59.8 32.6L114.3 29.5C120.5 29.1 126.1 33.2 127.7 39.2L131.3 53C132.6 58.2 129.5 63.6 124.3 64.9L96.5 72C89.8 73.7 82.8 74 76 72.8L38.6 66.2C29.9 64.7 26.3 61.8 29 55Z"
+          fill="#89A66A"
         />
         <path
-          d="M17.2 41L49.6 39.3"
-          stroke="#14B8A6"
-          strokeWidth="3"
-          strokeLinecap="round"
+          d="M67 66.1C71.9 58.9 79.7 54.1 88.4 53.6L155.5 49.7C161.4 49.4 166.7 53.2 168.2 58.8L170.1 66.1C171.2 70.1 168.8 74.3 164.8 75.4L153.3 78.4C149.5 79.4 145.6 79.6 141.7 79L91.2 71.8C84.1 70.8 75.5 68.5 67 66.1Z"
+          fill="#D6C9A6"
+          transform="translate(0 -12)"
         />
         <path
-          d="M23.9 28.2L42.2 37.5"
-          stroke="#E2E8F0"
-          strokeWidth="3.1"
+          d="M47 34.5C54.1 26.4 64.3 20.6 75.7 19.8L144 15.8C151.1 15.4 157.2 20.4 158.1 27.4L159.1 34.5"
+          stroke="#89A66A"
+          strokeWidth="8"
           strokeLinecap="round"
         />
-        <path
-          d="M28.2 26.1L46 35.1"
-          stroke="#93C5FD"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M17.6 33.1L34.8 32.2"
-          stroke="#F8FAFC"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16.8 36.4L33.3 35.8"
-          stroke="#F8FAFC"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16.8 44.8L47.8 43.1"
-          stroke="#0F172A"
-          strokeOpacity="0.16"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M46.8 23.8L51.2 41.7"
-          stroke="#0F172A"
-          strokeWidth="2.1"
-          strokeLinecap="round"
-        />
-        <path
-          d="M40.2 23.5C41.5 18.7 46.1 15.6 51.1 16.3"
-          stroke="#14B8A6"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
+        <path d="M74 25L67 31" stroke="#89A66A" strokeWidth="8" strokeLinecap="round" />
+        <path d="M89 24L82 31.5" stroke="#89A66A" strokeWidth="8" strokeLinecap="round" />
+        <path d="M104 23.5L97 31.5" stroke="#89A66A" strokeWidth="8" strokeLinecap="round" />
+        <path d="M118 23L111 31.5" stroke="#89A66A" strokeWidth="8" strokeLinecap="round" />
+        <path d="M24 53C28.1 44.5 34.8 38.1 43.1 34.7" stroke="#89A66A" strokeWidth="8" strokeLinecap="round" />
+        <circle cx="15" cy="44" r="5" fill="#89A66A" />
+        <circle cx="9.5" cy="52.5" r="4.5" fill="#89A66A" />
+        <circle cx="20.5" cy="53.5" r="4.5" fill="#89A66A" />
+        <circle cx="16" cy="61" r="4" fill="#89A66A" />
       </svg>
+      <div className={cn("text-center leading-none", compact ? "-mt-1" : "-mt-2")}>
+        <div
+          className={cn(
+            "font-semibold uppercase tracking-[0.14em] text-[#89A66A]",
+            compact ? "text-[10px]" : "text-sm",
+          )}
+        >
+          Thrifty Shoes
+        </div>
+        {!compact && (
+          <div className="pt-1 text-[9px] font-medium tracking-[0.18em] text-[#0f172a]/70">
+            Curated. Restored. Ready.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
