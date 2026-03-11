@@ -98,6 +98,23 @@ export type DeliveryZoneMatch = {
   distanceKm?: number;
 };
 
+const normalizeText = (value?: string | null) => value?.trim().toLowerCase() || "";
+
+export const findNationwideZone = (
+  zones: DeliveryZoneRecord[],
+): DeliveryZoneRecord | null => {
+  const nationwideMarkers = ["pakistan", "all pakistan", "nationwide", "all over pakistan"];
+
+  return (
+    zones.find((zone) => {
+      if (!zone.isActive) return false;
+      const city = normalizeText(zone.city);
+      const name = normalizeText(zone.name);
+      return nationwideMarkers.includes(city) || nationwideMarkers.includes(name);
+    }) ?? null
+  );
+};
+
 export const findMatchingZone = (
   zones: DeliveryZoneRecord[],
   point: Point,

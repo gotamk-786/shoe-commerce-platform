@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
 import prisma from "../prisma";
-import { DeliveryZoneRecord, findMatchingZone } from "../lib/delivery-zones";
+import {
+  DeliveryZoneRecord,
+  findMatchingZone,
+  findNationwideZone,
+} from "../lib/delivery-zones";
 import { reverseGeocode, searchAddresses } from "../lib/geocoding";
 
 const router = Router();
@@ -64,7 +68,10 @@ router.post("/validate-zone", async (req, res, next) => {
           })) as DeliveryZoneRecord[]);
 
     const match = findMatchingZone(fallbackZones, { lat, lng });
-    if (!match) {
+    const nationwideZone = match ? null : findNationwideZone(fallbackZones);
+    const resolvedZone = match?.zone ?? nationwideZone;
+
+    if (!resolvedZone) {
       return res.json({
         available: false,
         message: "Delivery not available in this area.",
@@ -74,14 +81,14 @@ router.post("/validate-zone", async (req, res, next) => {
     return res.json({
       available: true,
       zone: {
-        id: match.zone.id,
-        name: match.zone.name,
-        city: match.zone.city,
-        coverageType: match.zone.coverageType,
-        shippingFee: match.zone.shippingFee,
-        estimatedDeliveryTime: match.zone.estimatedDeliveryTime,
-        codAvailable: match.zone.codAvailable,
-        distanceKm: match.distanceKm,
+        id: resolvedZone.id,
+        name: resolvedZone.name,
+        city: resolvedZone.city,
+        coverageType: resolvedZone.coverageType,
+        shippingFee: resolvedZone.shippingFee,
+        estimatedDeliveryTime: resolvedZone.estimatedDeliveryTime,
+        codAvailable: resolvedZone.codAvailable,
+        distanceKm: match?.distanceKm,
       },
     });
   } catch (error) {

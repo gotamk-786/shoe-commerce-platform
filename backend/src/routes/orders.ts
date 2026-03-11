@@ -7,7 +7,11 @@ import { sendMail } from "../lib/mailer";
 import { sendSms } from "../lib/sms";
 import { logActivity } from "../lib/activity";
 import { buildOrderCode } from "../lib/order-code";
-import { DeliveryZoneRecord, findMatchingZone } from "../lib/delivery-zones";
+import {
+  DeliveryZoneRecord,
+  findMatchingZone,
+  findNationwideZone,
+} from "../lib/delivery-zones";
 import PDFDocument from "pdfkit";
 
 const router = Router();
@@ -408,24 +412,26 @@ router.post("/", requireUser, async (req, res, next) => {
       lat: payload.shipping.lat,
       lng: payload.shipping.lng,
     });
+    const nationwideZone = matchedZone ? null : findNationwideZone(deliveryZones);
+    const resolvedZone = matchedZone?.zone ?? nationwideZone;
 
-    if (!matchedZone) {
+    if (!resolvedZone) {
       return res.status(400).json({ message: "Delivery not available in this area." });
     }
 
-    if (payload.paymentMethod === "cod" && !matchedZone.zone.codAvailable) {
+    if (payload.paymentMethod === "cod" && !resolvedZone.codAvailable) {
       return res.status(400).json({ message: "Cash on delivery is not available in this area." });
     }
 
-    const shippingFee = matchedZone.zone.shippingFee;
+    const shippingFee = resolvedZone.shippingFee;
     const total = Math.max(subTotal - discountTotal, 0) + shippingFee;
     const deliveryAddressSnapshot = {
       ...payload.shipping,
-      estimatedDeliveryTime: matchedZone.zone.estimatedDeliveryTime,
+      estimatedDeliveryTime: resolvedZone.estimatedDeliveryTime,
       shippingFee,
-      deliveryZoneId: matchedZone.zone.id,
-      deliveryZoneName: matchedZone.zone.name,
-      codAvailable: matchedZone.zone.codAvailable,
+      deliveryZoneId: resolvedZone.id,
+      deliveryZoneName: resolvedZone.name,
+      codAvailable: resolvedZone.codAvailable,
     };
 
     const createdOrder = await prisma.$transaction(async (tx) => {
@@ -445,10 +451,10 @@ router.post("/", requireUser, async (req, res, next) => {
             country: payload.shipping.country,
           },
           deliveryAddress: deliveryAddressSnapshot,
-          deliveryZoneId: matchedZone.zone.id,
-          deliveryZoneName: matchedZone.zone.name,
-          codAvailableAtOrderTime: matchedZone.zone.codAvailable,
-          estimatedDeliveryTimeAtOrderTime: matchedZone.zone.estimatedDeliveryTime,
+          deliveryZoneId: resolvedZone.id,
+          deliveryZoneName: resolvedZone.name,
+          codAvailableAtOrderTime: resolvedZone.codAvailable,
+          estimatedDeliveryTimeAtOrderTime: resolvedZone.estimatedDeliveryTime,
           paymentMethod: payload.paymentMethod ?? undefined,
           items: {
             create: resolvedItems.map((item) => {
