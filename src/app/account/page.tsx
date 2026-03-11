@@ -652,26 +652,24 @@ export default function AccountPage() {
                         >
                           Track order
                         </Button>
-                        {["paid", "shipped", "delivered"].includes(order.status) ? (
-                          <Button
-                            variant="ghost"
-                            onClick={async () => {
-                              try {
-                                const blob = await downloadInvoice(order.id);
-                                const url = window.URL.createObjectURL(blob);
-                                const link = document.createElement("a");
-                                link.href = url;
-                                link.download = `invoice-${order.id}.pdf`;
-                                link.click();
-                                window.URL.revokeObjectURL(url);
-                              } catch (err) {
-                                setError(handleApiError(err));
-                              }
-                            }}
-                          >
-                            Download invoice
-                          </Button>
-                        ) : null}
+                        <Button
+                          variant="ghost"
+                          onClick={async () => {
+                            try {
+                              const blob = await downloadInvoice(order.id);
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = `invoice-${order.code || order.id}.pdf`;
+                              link.click();
+                              window.URL.revokeObjectURL(url);
+                            } catch (err) {
+                              setError(handleApiError(err));
+                            }
+                          }}
+                        >
+                          Download invoice
+                        </Button>
                       </div>
                     </div>
                   </div>

@@ -193,10 +193,6 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    if (!["paid", "shipped", "delivered"].includes(order.status)) {
-      return res.status(400).json({ message: "Invoice is available after payment is confirmed." });
-    }
-
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
@@ -238,12 +234,14 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
     doc
       .fillColor("#111827")
       .font("Helvetica-Bold")
-      .fontSize(11)
-      .text(`Invoice ${invoiceCode}`, 376, 52)
+      .fontSize(10)
+      .text("Order Number", 376, 48)
+      .fontSize(16)
+      .text(invoiceCode, 376, 62)
       .font("Helvetica")
       .fontSize(10)
-      .text(`Date: ${placedDate}`, 376, 72)
-      .text(`Status: ${String(order.status).toUpperCase()}`, 376, 89);
+      .text(`Date: ${placedDate}`, 376, 88)
+      .text(`Status: ${String(order.status).toUpperCase()}`, 376, 104);
 
     doc
       .fillColor("#111827")
