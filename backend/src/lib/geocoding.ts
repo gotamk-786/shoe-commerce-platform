@@ -24,6 +24,7 @@ type NominatimSearchResult = {
   lon: string;
   display_name: string;
   address?: RawAddress;
+  namedetails?: Record<string, string>;
 };
 
 export type GeocodedAddress = {
@@ -64,20 +65,40 @@ const pickArea = (address?: RawAddress) =>
 const pickCity = (address?: RawAddress) =>
   address?.city || address?.town || address?.village || address?.county || "";
 
-const normalize = (entry: NominatimSearchResult): GeocodedAddress => ({
-  placeId: String(entry.place_id),
-  fullAddress: entry.display_name,
-  lat: Number(entry.lat),
-  lng: Number(entry.lon),
-  houseNo: entry.address?.house_number,
-  street: pickStreet(entry.address),
-  landmark: entry.address?.neighbourhood,
-  area: pickArea(entry.address),
-  city: pickCity(entry.address),
-  state: entry.address?.state || "",
-  postalCode: entry.address?.postcode,
-  country: entry.address?.country || "",
-});
+const pickEnglishName = (entry?: NominatimSearchResult, fallback?: string) =>
+  entry?.namedetails?.["name:en"] ||
+  entry?.namedetails?.name ||
+  fallback ||
+  "";
+
+const normalize = (entry: NominatimSearchResult): GeocodedAddress => {
+  const street = pickEnglishName(entry, pickStreet(entry.address));
+  const landmark = pickEnglishName(entry, entry.address?.neighbourhood);
+  const area = pickEnglishName(entry, pickArea(entry.address));
+  const city = pickEnglishName(entry, pickCity(entry.address));
+  const state = pickEnglishName(entry, entry.address?.state || "");
+  const country = entry.namedetails?.["name:en"] || entry.address?.country || "";
+  const postalCode = entry.address?.postcode;
+  const houseNo = entry.address?.house_number;
+  const fullAddress = [houseNo, street, landmark, area, city, state, postalCode, country]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    placeId: String(entry.place_id),
+    fullAddress: fullAddress || entry.display_name,
+    lat: Number(entry.lat),
+    lng: Number(entry.lon),
+    houseNo,
+    street,
+    landmark,
+    area,
+    city,
+    state,
+    postalCode,
+    country,
+  };
+};
 
 const fetchJson = async <T>(url: string) => {
   const response = await fetch(url, {
@@ -96,6 +117,7 @@ export const searchAddresses = async (query: string, limit = 5) => {
     q: query,
     format: "jsonv2",
     addressdetails: "1",
+    namedetails: "1",
     "accept-language": "en",
     limit: String(limit),
   });
@@ -113,6 +135,7 @@ export const reverseGeocode = async (lat: number, lng: number) => {
     lon: String(lng),
     format: "jsonv2",
     addressdetails: "1",
+    namedetails: "1",
     "accept-language": "en",
     zoom: "18",
   });
