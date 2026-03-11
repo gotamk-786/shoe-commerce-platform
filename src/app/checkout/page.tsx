@@ -162,7 +162,6 @@ export default function CheckoutPage() {
   const [zoneStatus, setZoneStatus] = useState<DeliveryZoneQuote | null>(null);
   const [zoneLoading, setZoneLoading] = useState(false);
   const [zoneError, setZoneError] = useState("");
-  const [locationLoading, setLocationLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("easypaisa");
   const [note, setNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -337,52 +336,6 @@ export default function CheckoutPage() {
       });
       await runZoneValidation(lat, lng, draft.city);
     }
-  };
-
-  const handleUseCurrentLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setAutocompleteStatus({ loading: false, error: "Geolocation is not supported on this device." });
-      return;
-    }
-
-    setLocationLoading(true);
-    let resolved = false;
-    const timeoutId = window.setTimeout(() => {
-      if (resolved) return;
-      resolved = true;
-      setLocationLoading(false);
-      setAutocompleteStatus({
-        loading: false,
-        error: "Location request timed out. Search the address or place the pin manually on the map.",
-      });
-    }, 16000);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        if (resolved) return;
-        resolved = true;
-        window.clearTimeout(timeoutId);
-        try {
-          const suggestion = await reverseGeocodeAddress(position.coords.latitude, position.coords.longitude);
-          await applySuggestion(suggestion);
-        } catch (error) {
-          setAutocompleteStatus({ loading: false, error: handleApiError(error) });
-        } finally {
-          setLocationLoading(false);
-        }
-      },
-      (error) => {
-        if (resolved) return;
-        resolved = true;
-        window.clearTimeout(timeoutId);
-        setLocationLoading(false);
-        setAutocompleteStatus({
-          loading: false,
-          error: error.code === error.PERMISSION_DENIED ? "Location access was denied." : "Could not fetch your current location.",
-        });
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-    );
   };
 
   const handleEditAddress = (address: Address) => {
@@ -762,14 +715,12 @@ export default function CheckoutPage() {
                   zoneStatus={zoneStatus}
                   zoneLoading={zoneLoading}
                   zoneError={zoneError}
-                  geolocationLoading={locationLoading}
                   saveForLater={saveAddressForLater}
                   editMode={Boolean(editingAddressId)}
                   onChange={updateDraft}
                   onSuggestionInputChange={(value) => updateDraft({ fullAddress: value })}
                   onSuggestionSelect={(suggestion) => void applySuggestion(suggestion)}
                   onMarkerChange={(coords) => void handleMarkerChange(coords)}
-                  onUseCurrentLocation={handleUseCurrentLocation}
                   onSaveForLaterChange={setSaveAddressForLater}
                 />
               )}

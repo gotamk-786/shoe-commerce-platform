@@ -18,14 +18,12 @@ type Props = {
   zoneStatus: DeliveryZoneQuote | null;
   zoneLoading?: boolean;
   zoneError?: string;
-  geolocationLoading?: boolean;
   saveForLater: boolean;
   editMode?: boolean;
   onChange: (patch: Partial<DeliveryAddressDraft>) => void;
   onSuggestionInputChange: (value: string) => void;
   onSuggestionSelect: (suggestion: GeocodedAddressSuggestion) => void;
   onMarkerChange: (coords: { lat: number; lng: number }) => void;
-  onUseCurrentLocation: () => void;
   onSaveForLaterChange: (value: boolean) => void;
 };
 
@@ -39,14 +37,12 @@ export default function AddressForm({
   zoneStatus,
   zoneLoading,
   zoneError,
-  geolocationLoading,
   saveForLater,
   editMode,
   onChange,
   onSuggestionInputChange,
   onSuggestionSelect,
   onMarkerChange,
-  onUseCurrentLocation,
   onSaveForLaterChange,
 }: Props) {
   return (
@@ -55,8 +51,6 @@ export default function AddressForm({
         lat={value.lat}
         lng={value.lng}
         onMarkerChange={onMarkerChange}
-        onUseCurrentLocation={onUseCurrentLocation}
-        locationLoading={geolocationLoading}
       />
 
       <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
