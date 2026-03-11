@@ -1,0 +1,22 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="1020" cy="140" r="160" fill="#C084FC" fill-opacity="0.18"/>
+  <circle cx="210" cy="590" r="170" fill="#22D3EE" fill-opacity="0.18"/>
+  <rect x="78" y="82" width="228" height="54" rx="27" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.18"/>
+  <text x="192" y="117" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="6" text-anchor="middle">SNEAKERS</text>
+  <text x="78" y="214" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Sneaker collection</text>
+  <text x="78" y="276" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="30">Low tops, runners, and standout pairs.</text>
+  <g opacity="0.94">
+    <path d="M588 478C644 388 722 334 826 320L1018 294C1062 288 1102 324 1102 368V438C1102 474 1074 506 1038 512L856 540C730 560 634 544 546 496L588 478Z" fill="#0F172A"/>
+    <path d="M646 430L904 506" stroke="#E5E7EB" stroke-width="12" stroke-linecap="round"/>
+    <path d="M692 396L980 484" stroke="#F8FAFC" stroke-opacity="0.85" stroke-width="10" stroke-linecap="round"/>
+    <path d="M566 488L1044 430" stroke="white" stroke-opacity="0.12" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A"/>
+      <stop offset="0.52" stop-color="#312E81"/>
+      <stop offset="1" stop-color="#0E7490"/>
+    </linearGradient>
+  </defs>
+</svg>

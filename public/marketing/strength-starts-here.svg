@@ -1,0 +1,26 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="48" fill="url(#bg)"/>
+  <circle cx="1020" cy="140" r="150" fill="#F97316" fill-opacity="0.18"/>
+  <circle cx="240" cy="150" r="180" fill="#38BDF8" fill-opacity="0.16"/>
+  <rect x="94" y="104" width="232" height="68" rx="34" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.2"/>
+  <text x="210" y="147" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="26" letter-spacing="8" text-anchor="middle">TRAINING</text>
+  <text x="94" y="308" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="84" font-weight="700">Strength starts here</text>
+  <text x="94" y="380" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="38">Training-ready fits for daily reps.</text>
+  <rect x="94" y="460" width="170" height="70" rx="35" fill="white"/>
+  <text x="179" y="503" fill="#0F172A" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" text-anchor="middle">SHOP</text>
+  <g opacity="0.88">
+    <path d="M738 458C778 398 834 364 904 354L1034 336C1070 332 1102 360 1102 396V444C1102 474 1080 500 1050 506L930 532C844 550 776 536 716 492L738 458Z" fill="#111827"/>
+    <path d="M640 482C680 420 732 382 804 372L928 355C964 350 996 378 996 414V462C996 492 974 518 944 524L824 549C742 566 674 550 618 510L640 482Z" fill="#1E293B"/>
+    <path d="M706 470C746 410 802 376 872 366L1002 348C1038 344 1070 372 1070 408V456C1070 486 1048 512 1018 518L898 544C812 562 744 548 684 504L706 470Z" fill="#334155"/>
+    <path d="M612 500L980 454" stroke="white" stroke-opacity="0.12" stroke-width="8" stroke-linecap="round"/>
+    <path d="M692 436L768 510" stroke="#FB7185" stroke-width="10" stroke-linecap="round"/>
+    <path d="M730 414L810 494" stroke="#FDBA74" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="120" y1="40" x2="1100" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="0.5" stop-color="#1D4ED8"/>
+      <stop offset="1" stop-color="#0F172A"/>
+    </linearGradient>
+  </defs>
+</svg>

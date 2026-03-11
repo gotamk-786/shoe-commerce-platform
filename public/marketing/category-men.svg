@@ -1,0 +1,21 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="170" cy="130" r="130" fill="#38BDF8" fill-opacity="0.18"/>
+  <circle cx="1030" cy="590" r="160" fill="#F59E0B" fill-opacity="0.2"/>
+  <rect x="78" y="82" width="180" height="54" rx="27" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.18"/>
+  <text x="168" y="117" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="6" text-anchor="middle">MEN</text>
+  <text x="78" y="214" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Mens shoes</text>
+  <text x="78" y="276" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="30">Structured staples with clean finish.</text>
+  <g opacity="0.92">
+    <path d="M632 464C684 392 750 350 840 338L1002 316C1046 310 1086 344 1086 388V446C1086 482 1058 512 1022 518L868 548C760 568 678 554 604 504L632 464Z" fill="#111827"/>
+    <path d="M542 498C594 426 660 384 750 372L912 350C956 344 996 378 996 422V480C996 516 968 546 932 552L778 582C670 602 588 588 514 538L542 498Z" fill="#374151"/>
+    <path d="M592 454L1008 420" stroke="white" stroke-opacity="0.12" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="0.55" stop-color="#334155"/>
+      <stop offset="1" stop-color="#A16207"/>
+    </linearGradient>
+  </defs>
+</svg>

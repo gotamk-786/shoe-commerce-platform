@@ -44,36 +44,31 @@ export default function CategoryStories({
     { image: string; accent: string; microcopy: string; badge: string }
   > = {
     men: {
-      image:
-        "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80",
+      image: "/marketing/category-men.svg",
       accent: "from-slate-950 via-slate-700 to-stone-400",
       microcopy: "Structured staples with clean finish.",
       badge: "Daily rotation",
     },
     women: {
-      image:
-        "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1200&q=80",
+      image: "/marketing/category-women.svg",
       accent: "from-zinc-950 via-rose-700 to-orange-300",
       microcopy: "Soft lines with a bold street edge.",
       badge: "New mood",
     },
     sneakers: {
-      image:
-        "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=1200&q=80",
+      image: "/marketing/category-sneakers.svg",
       accent: "from-sky-950 via-indigo-700 to-cyan-300",
       microcopy: "Low tops, runners, and standout pairs.",
       badge: "Fan favorite",
     },
     unisex: {
-      image:
-        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=80",
+      image: "/marketing/category-sneakers.svg",
       accent: "from-zinc-950 via-emerald-700 to-lime-300",
       microcopy: "Versatile builds for every fit.",
       badge: "Core edit",
     },
     default: {
-      image:
-        "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=1200&q=80",
+      image: "/marketing/category-men.svg",
       accent: "from-slate-950 via-slate-700 to-amber-300",
       microcopy: "Fresh pairs selected for every day.",
       badge: "Catalog pick",

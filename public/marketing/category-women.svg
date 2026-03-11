@@ -1,0 +1,22 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="40" fill="url(#bg)"/>
+  <circle cx="1030" cy="130" r="150" fill="#FB7185" fill-opacity="0.16"/>
+  <circle cx="220" cy="600" r="170" fill="#FDBA74" fill-opacity="0.16"/>
+  <rect x="78" y="82" width="216" height="54" rx="27" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.18"/>
+  <text x="186" y="117" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="6" text-anchor="middle">WOMEN</text>
+  <text x="78" y="214" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Womens shoes</text>
+  <text x="78" y="276" fill="#F8FAFC" font-family="Arial, Helvetica, sans-serif" font-size="30">Soft lines with a bold street edge.</text>
+  <g opacity="0.94">
+    <path d="M610 484C660 402 732 352 824 338L986 316C1030 310 1070 344 1070 388V448C1070 484 1042 514 1006 520L852 548C744 568 662 554 588 504L610 484Z" fill="#111827"/>
+    <path d="M674 438L952 514" stroke="#F9A8D4" stroke-width="14" stroke-linecap="round"/>
+    <path d="M732 408L1000 486" stroke="#FDE68A" stroke-width="10" stroke-linecap="round"/>
+    <path d="M590 496L1018 434" stroke="white" stroke-opacity="0.12" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="84" y1="46" x2="1114" y2="704" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F2937"/>
+      <stop offset="0.5" stop-color="#9D174D"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+  </defs>
+</svg>

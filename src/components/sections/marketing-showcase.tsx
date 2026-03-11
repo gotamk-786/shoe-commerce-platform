@@ -80,8 +80,7 @@ const fallbackSettings: MarketingSettings = {
       tag: "Training",
       ctaLabel: "Shop",
       ctaHref: "/collection",
-      imageUrl:
-        "https://images.unsplash.com/photo-1514989940723-e8e51635b782?auto=format&fit=crop&w=1200&q=80",
+      imageUrl: "/marketing/strength-starts-here.svg",
     },
     {
       id: "tile-4",
@@ -134,10 +133,10 @@ export default function MarketingShowcase({
     },
   ];
   const tileFallbacks = [
-    "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=1200&q=80",
-    "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?auto=format&fit=crop&w=1200&q=80",
+    "/marketing/category-men.svg",
+    "/marketing/category-sneakers.svg",
+    "/marketing/strength-starts-here.svg",
+    "/marketing/category-women.svg",
   ];
 
   useEffect(() => {
