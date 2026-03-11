@@ -46,6 +46,7 @@ const NOMINATIM_BASE = process.env.NOMINATIM_BASE_URL ?? "https://nominatim.open
 const requestHeaders = () => ({
   "User-Agent": process.env.NOMINATIM_USER_AGENT ?? "ThriftyShoes/1.0 (support@thriftyshoes.vercel.app)",
   Accept: "application/json",
+  "Accept-Language": "en",
 });
 
 const pickStreet = (address?: RawAddress) =>
@@ -95,6 +96,7 @@ export const searchAddresses = async (query: string, limit = 5) => {
     q: query,
     format: "jsonv2",
     addressdetails: "1",
+    "accept-language": "en",
     limit: String(limit),
   });
 
@@ -111,6 +113,7 @@ export const reverseGeocode = async (lat: number, lng: number) => {
     lon: String(lng),
     format: "jsonv2",
     addressdetails: "1",
+    "accept-language": "en",
     zoom: "18",
   });
 
