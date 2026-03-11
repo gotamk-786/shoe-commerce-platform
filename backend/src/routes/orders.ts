@@ -43,8 +43,8 @@ const createOrderSchema = z.object({
     state: z.string().optional(),
     postalCode: z.string().optional(),
     country: z.string().min(1),
-    lat: z.number(),
-    lng: z.number(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
     placeId: z.string().optional(),
     deliveryNotes: z.string().optional(),
   }),
@@ -408,30 +408,29 @@ router.post("/", requireUser, async (req, res, next) => {
             orderBy: [{ shippingFee: "asc" }, { createdAt: "asc" }],
           })) as DeliveryZoneRecord[]);
 
-    const matchedZone = findMatchingZone(deliveryZones, {
-      lat: payload.shipping.lat,
-      lng: payload.shipping.lng,
-    });
+    const matchedZone =
+      payload.shipping.lat !== undefined && payload.shipping.lng !== undefined
+        ? findMatchingZone(deliveryZones, {
+            lat: payload.shipping.lat,
+            lng: payload.shipping.lng,
+          })
+        : null;
     const nationwideZone = matchedZone ? null : findNationwideZone(deliveryZones);
-    const resolvedZone = matchedZone?.zone ?? nationwideZone;
+    const resolvedZone = matchedZone?.zone ?? nationwideZone ?? deliveryZones[0] ?? null;
 
-    if (!resolvedZone) {
-      return res.status(400).json({ message: "Delivery not available in this area." });
-    }
-
-    if (payload.paymentMethod === "cod" && !resolvedZone.codAvailable) {
+    if (payload.paymentMethod === "cod" && resolvedZone && !resolvedZone.codAvailable) {
       return res.status(400).json({ message: "Cash on delivery is not available in this area." });
     }
 
-    const shippingFee = resolvedZone.shippingFee;
+    const shippingFee = resolvedZone?.shippingFee ?? 0;
     const total = Math.max(subTotal - discountTotal, 0) + shippingFee;
     const deliveryAddressSnapshot = {
       ...payload.shipping,
-      estimatedDeliveryTime: resolvedZone.estimatedDeliveryTime,
+      estimatedDeliveryTime: resolvedZone?.estimatedDeliveryTime,
       shippingFee,
-      deliveryZoneId: resolvedZone.id,
-      deliveryZoneName: resolvedZone.name,
-      codAvailable: resolvedZone.codAvailable,
+      deliveryZoneId: resolvedZone?.id,
+      deliveryZoneName: resolvedZone?.name,
+      codAvailable: resolvedZone?.codAvailable,
     };
 
     const createdOrder = await prisma.$transaction(async (tx) => {
@@ -451,10 +450,10 @@ router.post("/", requireUser, async (req, res, next) => {
             country: payload.shipping.country,
           },
           deliveryAddress: deliveryAddressSnapshot,
-          deliveryZoneId: resolvedZone.id,
-          deliveryZoneName: resolvedZone.name,
-          codAvailableAtOrderTime: resolvedZone.codAvailable,
-          estimatedDeliveryTimeAtOrderTime: resolvedZone.estimatedDeliveryTime,
+          deliveryZoneId: resolvedZone?.id,
+          deliveryZoneName: resolvedZone?.name,
+          codAvailableAtOrderTime: resolvedZone?.codAvailable,
+          estimatedDeliveryTimeAtOrderTime: resolvedZone?.estimatedDeliveryTime,
           paymentMethod: payload.paymentMethod ?? undefined,
           items: {
             create: resolvedItems.map((item) => {

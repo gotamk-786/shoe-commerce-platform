@@ -1,9 +1,7 @@
 "use client";
 
 import Input from "@/components/ui/input";
-import { DeliveryAddressInput, DeliveryZoneQuote, GeocodedAddressSuggestion } from "@/lib/types";
-import AddressPicker from "./address-picker";
-import DeliveryZoneStatus from "./delivery-zone-status";
+import { DeliveryAddressInput } from "@/lib/types";
 
 export type DeliveryAddressDraft = Omit<DeliveryAddressInput, "lat" | "lng"> & {
   lat?: number;
@@ -12,18 +10,9 @@ export type DeliveryAddressDraft = Omit<DeliveryAddressInput, "lat" | "lng"> & {
 
 type Props = {
   value: DeliveryAddressDraft;
-  suggestions: GeocodedAddressSuggestion[];
-  suggestionLoading: boolean;
-  suggestionError?: string;
-  zoneStatus: DeliveryZoneQuote | null;
-  zoneLoading?: boolean;
-  zoneError?: string;
   saveForLater: boolean;
   editMode?: boolean;
   onChange: (patch: Partial<DeliveryAddressDraft>) => void;
-  onSuggestionInputChange: (value: string) => void;
-  onSuggestionSelect: (suggestion: GeocodedAddressSuggestion) => void;
-  onMarkerChange: (coords: { lat: number; lng: number }) => void;
   onSaveForLaterChange: (value: boolean) => void;
 };
 
@@ -31,64 +20,20 @@ const labelOptions: Array<DeliveryAddressDraft["label"]> = ["Home", "Office", "O
 
 export default function AddressForm({
   value,
-  suggestions,
-  suggestionLoading,
-  suggestionError,
-  zoneStatus,
-  zoneLoading,
-  zoneError,
   saveForLater,
   editMode,
   onChange,
-  onSuggestionInputChange,
-  onSuggestionSelect,
-  onMarkerChange,
   onSaveForLaterChange,
 }: Props) {
   return (
     <div className="space-y-5">
-      <AddressPicker
-        lat={value.lat}
-        lng={value.lng}
-        onMarkerChange={onMarkerChange}
+      <Input
+        label="Full address"
+        required
+        value={value.fullAddress}
+        onChange={(event) => onChange({ fullAddress: event.target.value })}
+        placeholder="House no, street, block, sector, landmark"
       />
-
-      <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
-
-      <div className="space-y-2">
-        <Input
-          label="Full address"
-          required
-          value={value.fullAddress}
-          onChange={(event) => {
-            onChange({ fullAddress: event.target.value });
-            onSuggestionInputChange(event.target.value);
-          }}
-          placeholder="House no, street, block, sector, landmark"
-        />
-        {suggestionLoading ? <p className="text-xs text-gray-500">Searching addresses...</p> : null}
-        {suggestionError ? <p className="text-xs text-amber-700">{suggestionError}</p> : null}
-        {value.fullAddress.trim().length >= 3 ? (
-          <div className="overflow-hidden rounded-2xl border border-black/10 bg-white">
-            {suggestions.length > 0 ? (
-              <div className="max-h-72 overflow-y-auto">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={`${suggestion.placeId}-${suggestion.lat}-${suggestion.lng}`}
-                    type="button"
-                    onClick={() => onSuggestionSelect(suggestion)}
-                    className="block w-full border-b border-black/5 px-4 py-3 text-left text-sm text-gray-700 transition last:border-b-0 hover:bg-slate-50"
-                  >
-                    {suggestion.fullAddress}
-                  </button>
-                ))}
-              </div>
-            ) : !suggestionLoading ? (
-              <div className="px-4 py-3 text-sm text-gray-500">No suggestions found.</div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Input

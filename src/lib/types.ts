@@ -109,8 +109,8 @@ export type DeliveryAddressInput = {
   state?: string;
   postalCode?: string;
   country: string;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   placeId?: string;
   deliveryNotes?: string;
 };

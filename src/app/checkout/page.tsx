@@ -4,7 +4,6 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  autocompleteAddress,
   createAddress,
   createOrder,
   deleteAddress,
@@ -13,11 +12,9 @@ import {
   fetchProductBySlug,
   fetchProfile,
   handleApiError,
-  reverseGeocodeAddress,
   setDefaultAddress,
   updateAddress,
   validateCoupon,
-  validateDeliveryZone,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import Button from "@/components/ui/button";
@@ -26,12 +23,9 @@ import { clearCart } from "@/store/slices/cart-slice";
 import {
   Address,
   DeliveryAddressInput,
-  DeliveryZoneQuote,
-  GeocodedAddressSuggestion,
 } from "@/lib/types";
 import AddressForm, { DeliveryAddressDraft } from "@/components/checkout/address-form";
 import SavedAddressList from "@/components/checkout/saved-address-list";
-import DeliveryZoneStatus from "@/components/checkout/delivery-zone-status";
 
 const CHECKOUT_ADDRESS_CACHE_KEY = "thrifty_checkout_addresses";
 
@@ -144,9 +138,7 @@ export default function CheckoutPage() {
 
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [savedAddresses, setSavedAddresses] = useState<Address[]>(cachedAddresses);
-  const [addressMode, setAddressMode] = useState<"saved" | "new">(
-    preferredCachedAddress?.lat !== undefined && preferredCachedAddress?.lng !== undefined ? "saved" : "new",
-  );
+  const [addressMode, setAddressMode] = useState<"saved" | "new">(preferredCachedAddress ? "saved" : "new");
   const [selectedAddressId, setSelectedAddressId] = useState(preferredCachedAddress?.id ?? "");
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DeliveryAddressDraft>(
@@ -157,11 +149,6 @@ export default function CheckoutPage() {
     loading: Boolean(token) && cachedAddresses.length === 0,
   });
   const [addressAction, setAddressAction] = useState<{ busyId?: string; saving: boolean }>({ saving: false });
-  const [autocompleteResults, setAutocompleteResults] = useState<GeocodedAddressSuggestion[]>([]);
-  const [autocompleteStatus, setAutocompleteStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
-  const [zoneStatus, setZoneStatus] = useState<DeliveryZoneQuote | null>(null);
-  const [zoneLoading, setZoneLoading] = useState(false);
-  const [zoneError, setZoneError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("easypaisa");
   const [note, setNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -172,7 +159,7 @@ export default function CheckoutPage() {
   const [status, setStatus] = useState<{ loading: boolean; error?: string; done?: boolean }>({ loading: false });
 
   const subTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const shippingFee = zoneStatus?.available && zoneStatus.zone ? zoneStatus.zone.shippingFee : 0;
+  const shippingFee = 0;
   const total = Math.max(subTotal - discount, 0) + shippingFee;
 
   const updateDraft = (patch: Partial<DeliveryAddressDraft>) => {
@@ -184,48 +171,6 @@ export default function CheckoutPage() {
     writeCachedAddresses(addresses);
   };
 
-  const runZoneValidation = async (lat?: number, lng?: number, city?: string) => {
-    if (lat === undefined || lng === undefined) {
-      setZoneStatus(null);
-      setZoneError("");
-      return null;
-    }
-    try {
-      setZoneLoading(true);
-      setZoneError("");
-      const result = await validateDeliveryZone(lat, lng, city);
-      setZoneStatus(result);
-      return result;
-    } catch (error) {
-      const message = handleApiError(error);
-      setZoneError(message);
-      setZoneStatus(null);
-      return null;
-    } finally {
-      setZoneLoading(false);
-    }
-  };
-
-  const applySuggestion = async (suggestion: GeocodedAddressSuggestion) => {
-    setAutocompleteResults([]);
-    setAutocompleteStatus({ loading: false, error: undefined });
-    setDraft((prev) => ({
-      ...prev,
-      fullAddress: suggestion.fullAddress || prev.fullAddress,
-      houseNo: suggestion.houseNo || prev.houseNo || "",
-      street: suggestion.street || prev.street,
-      landmark: suggestion.landmark || prev.landmark || "",
-      area: suggestion.area || prev.area || "",
-      city: suggestion.city || prev.city,
-      state: suggestion.state || prev.state || "",
-      postalCode: suggestion.postalCode || prev.postalCode || "",
-      country: suggestion.country || prev.country,
-      lat: suggestion.lat,
-      lng: suggestion.lng,
-      placeId: suggestion.placeId,
-    }));
-    await runZoneValidation(suggestion.lat, suggestion.lng, suggestion.city);
-  };
   useEffect(() => {
     fetchPaymentSettings()
       .then((data) => {
@@ -262,11 +207,10 @@ export default function CheckoutPage() {
           const addresses = addressesResult.value || [];
           syncAddresses(addresses);
           const preferred = getPreferredAddress(addresses);
-          if (preferred?.lat !== undefined && preferred?.lng !== undefined) {
+          if (preferred) {
             setSelectedAddressId(preferred.id);
             setAddressMode("saved");
             setDraft(buildDraftFromAddress(preferred, contact));
-            await runZoneValidation(preferred.lat, preferred.lng, preferred.city);
           } else {
             setAddressMode("new");
           }
@@ -286,56 +230,11 @@ export default function CheckoutPage() {
     };
   }, [token, fallbackContact]);
 
-  useEffect(() => {
-    if (addressMode !== "new") return;
-
-    const query = draft.fullAddress.trim();
-    if (query.length < 3) {
-      setAutocompleteResults([]);
-      setAutocompleteStatus({ loading: false });
-      return;
-    }
-
-    const timeoutId = window.setTimeout(async () => {
-      try {
-        setAutocompleteStatus({ loading: true });
-        const results = await autocompleteAddress(query);
-        setAutocompleteResults(results);
-        setAutocompleteStatus({ loading: false });
-      } catch (error) {
-        setAutocompleteResults([]);
-        setAutocompleteStatus({ loading: false, error: handleApiError(error) });
-      }
-    }, 400);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [addressMode, draft.fullAddress]);
-
   const selectSavedAddress = async (address: Address) => {
     setSelectedAddressId(address.id);
     setAddressMode("saved");
     setEditingAddressId(null);
     setDraft(buildDraftFromAddress(address, fallbackContact));
-    if (address.lat !== undefined && address.lng !== undefined) {
-      await runZoneValidation(address.lat, address.lng, address.city);
-    } else {
-      setZoneStatus(null);
-      setZoneError("This saved address needs a map pin. Edit it and confirm the location.");
-    }
-  };
-
-  const handleMarkerChange = async ({ lat, lng }: { lat: number; lng: number }) => {
-    updateDraft({ lat, lng });
-    try {
-      const suggestion = await reverseGeocodeAddress(lat, lng);
-      await applySuggestion(suggestion);
-    } catch (error) {
-      setAutocompleteStatus({
-        loading: false,
-        error: "Map pin placed, but exact address details could not be fetched automatically.",
-      });
-      await runZoneValidation(lat, lng, draft.city);
-    }
   };
 
   const handleEditAddress = (address: Address) => {
@@ -343,9 +242,6 @@ export default function CheckoutPage() {
     setEditingAddressId(address.id);
     setSaveAddressForLater(true);
     setDraft(buildDraftFromAddress(address, fallbackContact));
-    if (address.lat !== undefined && address.lng !== undefined) {
-      void runZoneValidation(address.lat, address.lng, address.city);
-    }
   };
 
   const handleDeleteAddress = async (address: Address) => {
@@ -362,7 +258,6 @@ export default function CheckoutPage() {
           setAddressMode("new");
           setSelectedAddressId("");
           setDraft(createEmptyDraft(fallbackContact));
-          setZoneStatus(null);
         }
       }
     } catch (error) {
@@ -426,15 +321,6 @@ export default function CheckoutPage() {
     if (!draft.fullAddress.trim() || !draft.street.trim() || !draft.city.trim() || !draft.country.trim()) {
       return "Complete the delivery address before continuing.";
     }
-    if (draft.lat === undefined || draft.lng === undefined) {
-      return "Pick a delivery location on the map before continuing.";
-    }
-
-    const quote = await runZoneValidation(draft.lat, draft.lng, draft.city);
-    if (!quote?.available || !quote.zone) {
-      return quote?.message || "Delivery not available in this area.";
-    }
-
     return null;
   };
   const buildShippingPayload = (): DeliveryAddressInput | null => {
@@ -442,7 +328,7 @@ export default function CheckoutPage() {
 
     if (addressMode === "saved") {
       const selected = savedAddresses.find((entry) => entry.id === selectedAddressId);
-      if (!selected || selected.lat === undefined || selected.lng === undefined) return null;
+      if (!selected) return null;
 
       return {
         addressId: selected.id,
@@ -463,14 +349,12 @@ export default function CheckoutPage() {
         state: selected.state || undefined,
         postalCode: selected.postalCode || selected.zip || undefined,
         country: selected.country,
-        lat: selected.lat,
-        lng: selected.lng,
+        lat: selected.lat ?? undefined,
+        lng: selected.lng ?? undefined,
         placeId: selected.placeId || undefined,
         deliveryNotes: deliveryNotes || selected.deliveryNotes || undefined,
       };
     }
-
-    if (draft.lat === undefined || draft.lng === undefined) return null;
 
     return {
       addressId: draft.addressId,
@@ -487,8 +371,8 @@ export default function CheckoutPage() {
       state: draft.state || undefined,
       postalCode: draft.postalCode || undefined,
       country: draft.country,
-      lat: draft.lat,
-      lng: draft.lng,
+      lat: draft.lat ?? undefined,
+      lng: draft.lng ?? undefined,
       placeId: draft.placeId || undefined,
       deliveryNotes: deliveryNotes || undefined,
     };
@@ -503,15 +387,6 @@ export default function CheckoutPage() {
           const selected = savedAddresses.find((entry) => entry.id === selectedAddressId);
           if (!selected) {
             setStatus({ loading: false, error: "Select a saved address or add a new one." });
-            return;
-          }
-          if (selected.lat === undefined || selected.lng === undefined) {
-            setStatus({ loading: false, error: "This saved address needs a map pin. Edit it and confirm the location." });
-            return;
-          }
-          const quote = await runZoneValidation(selected.lat, selected.lng, selected.city);
-          if (!quote?.available) {
-            setStatus({ loading: false, error: quote?.message || "Delivery not available in this area." });
             return;
           }
         } else {
@@ -551,18 +426,8 @@ export default function CheckoutPage() {
         setStatus({ loading: false, error: "Select or create a valid delivery address first." });
         return;
       }
-
-      const quote = await runZoneValidation(shippingPayload.lat, shippingPayload.lng, shippingPayload.city);
-      if (!quote?.available || !quote.zone) {
-        setStatus({ loading: false, error: quote?.message || "Delivery not available in this area." });
-        return;
-      }
       if (paymentSettings.paymentRequired && paymentMethod === "cod") {
         setStatus({ loading: false, error: "Please select a payment method to continue." });
-        return;
-      }
-      if (paymentMethod === "cod" && !quote.zone.codAvailable) {
-        setStatus({ loading: false, error: "Cash on delivery is not available for this address." });
         return;
       }
 
@@ -678,8 +543,6 @@ export default function CheckoutPage() {
                       setSelectedAddressId("");
                       setSaveAddressForLater(false);
                       setDraft(createEmptyDraft(fallbackContact));
-                      setZoneStatus(null);
-                      setZoneError("");
                     }} className={`rounded-full px-4 py-2 text-sm font-medium ${addressMode === "new" ? "bg-black text-white" : "border border-black/10 bg-white text-gray-700"}`}>
                       Add new address
                     </button>
@@ -704,23 +567,13 @@ export default function CheckoutPage() {
                     onEdit={handleEditAddress}
                     onDelete={(address) => void handleDeleteAddress(address)}
                   />
-                  <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
                 </>
               ) : (
                 <AddressForm
                   value={draft}
-                  suggestions={autocompleteResults}
-                  suggestionLoading={autocompleteStatus.loading}
-                  suggestionError={autocompleteStatus.error}
-                  zoneStatus={zoneStatus}
-                  zoneLoading={zoneLoading}
-                  zoneError={zoneError}
                   saveForLater={saveAddressForLater}
                   editMode={Boolean(editingAddressId)}
                   onChange={updateDraft}
-                  onSuggestionInputChange={(value) => updateDraft({ fullAddress: value })}
-                  onSuggestionSelect={(suggestion) => void applySuggestion(suggestion)}
-                  onMarkerChange={(coords) => void handleMarkerChange(coords)}
                   onSaveForLaterChange={setSaveAddressForLater}
                 />
               )}
@@ -753,7 +606,6 @@ export default function CheckoutPage() {
               <p className="text-sm text-gray-600">{draft.fullAddress}</p>
               <p className="text-sm text-gray-600">{draft.area ? `${draft.area}, ` : ""}{draft.city}{draft.state ? `, ${draft.state}` : ""}{draft.postalCode ? ` ${draft.postalCode}` : ""}, {draft.country}</p>
               <p className="text-sm text-gray-600">Payment: {paymentMethod}</p>
-              <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
               <p className="text-sm font-semibold text-gray-900">Total: {formatCurrency(total)}</p>
             </div>
           )}
