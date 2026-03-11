@@ -1,20 +1,26 @@
 <svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="1200" height="720" rx="40" fill="url(#bg)"/>
-  <circle cx="170" cy="130" r="130" fill="#38BDF8" fill-opacity="0.18"/>
-  <circle cx="1030" cy="590" r="160" fill="#F59E0B" fill-opacity="0.2"/>
+  <circle cx="172" cy="132" r="128" fill="#38BDF8" fill-opacity="0.16"/>
+  <circle cx="1034" cy="586" r="165" fill="#F59E0B" fill-opacity="0.18"/>
   <rect x="78" y="82" width="180" height="54" rx="27" fill="white" fill-opacity="0.12" stroke="white" stroke-opacity="0.18"/>
   <text x="168" y="117" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="22" letter-spacing="6" text-anchor="middle">MEN</text>
-  <text x="78" y="214" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Mens shoes</text>
-  <text x="78" y="276" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="30">Structured staples with clean finish.</text>
-  <g opacity="0.92">
-    <path d="M632 464C684 392 750 350 840 338L1002 316C1046 310 1086 344 1086 388V446C1086 482 1058 512 1022 518L868 548C760 568 678 554 604 504L632 464Z" fill="#111827"/>
-    <path d="M542 498C594 426 660 384 750 372L912 350C956 344 996 378 996 422V480C996 516 968 546 932 552L778 582C670 602 588 588 514 538L542 498Z" fill="#374151"/>
-    <path d="M592 454L1008 420" stroke="white" stroke-opacity="0.12" stroke-width="8" stroke-linecap="round"/>
+  <text x="78" y="210" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700">Mens shoes</text>
+  <text x="78" y="270" fill="#E2E8F0" font-family="Arial, Helvetica, sans-serif" font-size="30">Structured leather pairs with a sharp everyday finish.</text>
+  <g opacity="0.98">
+    <ellipse cx="825" cy="594" rx="230" ry="28" fill="#020617" fill-opacity="0.3"/>
+    <path d="M612 480C666 392 754 344 864 338L1004 330C1036 328 1066 348 1076 379L1094 434C1102 463 1084 492 1056 499L916 528C877 536 837 536 798 530L670 509C624 501 592 484 612 480Z" fill="#E5E7EB"/>
+    <path d="M632 489C682 410 763 370 862 366L978 362C1008 360 1034 379 1041 406L1053 451C1057 470 1046 488 1027 492L902 517C865 524 827 525 789 520L683 504C657 500 627 492 632 489Z" fill="#0F172A"/>
+    <path d="M706 400L962 392" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round"/>
+    <path d="M694 422L944 414" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round"/>
+    <path d="M682 444L924 436" stroke="#F8FAFC" stroke-width="10" stroke-linecap="round"/>
+    <path d="M720 480L1026 464" stroke="#F59E0B" stroke-width="11" stroke-linecap="round"/>
+    <path d="M614 501L1051 478" stroke="#E2E8F0" stroke-opacity="0.6" stroke-width="12" stroke-linecap="round"/>
+    <rect x="952" y="372" width="82" height="54" rx="20" fill="#334155"/>
   </g>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
       <stop stop-color="#020617"/>
-      <stop offset="0.55" stop-color="#334155"/>
+      <stop offset="0.58" stop-color="#334155"/>
       <stop offset="1" stop-color="#A16207"/>
     </linearGradient>
   </defs>
