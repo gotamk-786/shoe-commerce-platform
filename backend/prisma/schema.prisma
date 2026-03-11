@@ -23,6 +23,11 @@ enum UserRole {
   customer
 }
 
+enum DeliveryCoverageType {
+  radius
+  polygon
+}
+
 model Product {
   id          String   @id @default(cuid())
   slug        String   @unique
@@ -124,12 +129,22 @@ model Address {
   id        String   @id @default(cuid())
   userId    String
   label     String?
+  fullName  String?
+  fullAddress String?
+  houseNo   String?
   street    String
+  landmark  String?
+  area      String?
   city      String
   state     String
   zip       String
+  postalCode String?
   country   String
   phone     String
+  lat       Float?
+  lng       Float?
+  placeId   String?
+  deliveryNotes String?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,9 +308,15 @@ model Order {
   status    OrderStatus @default(processing)
   subTotal  Int         @default(0)
   discountTotal Int @default(0)
+  shippingFee Int       @default(0)
   total     Int
   couponCode String?
   shipping  Json?
+  deliveryAddress Json?
+  deliveryZoneId String?
+  deliveryZoneName String?
+  codAvailableAtOrderTime Boolean?
+  estimatedDeliveryTimeAtOrderTime String?
   paymentMethod String?
   courierName String?
   trackingNumber String?
@@ -306,6 +327,28 @@ model Order {
   returnRequests ReturnRequest[]
 
   user      User        @relation(fields: [userId], references: [id])
+  deliveryZone DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+}
+
+model DeliveryZone {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  coverageType DeliveryCoverageType
+  centerLat Float?
+  centerLng Float?
+  radiusKm  Float?
+  polygonJson Json?
+  shippingFee Int      @default(0)
+  estimatedDeliveryTime String
+  codAvailable Boolean @default(true)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  orders     Order[]
+
+  @@index([city, isActive])
 }
 
 model Coupon {

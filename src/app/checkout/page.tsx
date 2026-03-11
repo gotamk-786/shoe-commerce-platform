@@ -1,48 +1,50 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppSelector, useAppDispatch } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
+  autocompleteAddress,
   createAddress,
   createOrder,
+  deleteAddress,
   fetchAddresses,
   fetchPaymentSettings,
-  fetchProfile,
   fetchProductBySlug,
+  fetchProfile,
   handleApiError,
+  reverseGeocodeAddress,
+  setDefaultAddress,
+  updateAddress,
   validateCoupon,
+  validateDeliveryZone,
 } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import Button from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { clearCart } from "@/store/slices/cart-slice";
-import { Address } from "@/lib/types";
+import {
+  Address,
+  DeliveryAddressInput,
+  DeliveryZoneQuote,
+  GeocodedAddressSuggestion,
+} from "@/lib/types";
+import AddressForm, { DeliveryAddressDraft } from "@/components/checkout/address-form";
+import SavedAddressList from "@/components/checkout/saved-address-list";
+import DeliveryZoneStatus from "@/components/checkout/delivery-zone-status";
 
 const CHECKOUT_ADDRESS_CACHE_KEY = "thrifty_checkout_addresses";
 
-type Shipping = {
-  name: string;
+type ShippingContact = {
+  fullName: string;
   email: string;
-  address: string;
-  city: string;
-  state: string;
-  zip: string;
-  country: string;
-  phone: string;
 };
 
 const readCachedAddresses = (): Address[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(CHECKOUT_ADDRESS_CACHE_KEY);
-    if (!raw) {
-      return [];
-    }
-
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as Address[]) : [];
   } catch {
@@ -51,10 +53,7 @@ const readCachedAddresses = (): Address[] => {
 };
 
 const writeCachedAddresses = (addresses: Address[]) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(CHECKOUT_ADDRESS_CACHE_KEY, JSON.stringify(addresses));
   } catch {
@@ -65,70 +64,167 @@ const writeCachedAddresses = (addresses: Address[]) => {
 const getPreferredAddress = (addresses: Address[]) =>
   addresses.find((entry) => entry.isDefault) ?? addresses[0] ?? null;
 
+const buildDraftFromAddress = (address: Address, fallback: ShippingContact): DeliveryAddressDraft => ({
+  addressId: address.id,
+  label: address.label || "Home",
+  fullName: address.fullName || fallback.fullName,
+  email: fallback.email,
+  phone: address.phone,
+  fullAddress:
+    address.fullAddress ||
+    [address.houseNo, address.street, address.area, address.city, address.postalCode || address.zip, address.country]
+      .filter(Boolean)
+      .join(", "),
+  houseNo: address.houseNo || "",
+  street: address.street,
+  landmark: address.landmark || "",
+  area: address.area || "",
+  city: address.city,
+  state: address.state || "",
+  postalCode: address.postalCode || address.zip || "",
+  country: address.country,
+  lat: address.lat,
+  lng: address.lng,
+  placeId: address.placeId,
+  deliveryNotes: address.deliveryNotes || "",
+});
+
+const createEmptyDraft = (fallback: ShippingContact): DeliveryAddressDraft => ({
+  label: "Home",
+  fullName: fallback.fullName,
+  email: fallback.email,
+  phone: "",
+  fullAddress: "",
+  houseNo: "",
+  street: "",
+  landmark: "",
+  area: "",
+  city: "",
+  state: "",
+  postalCode: "",
+  country: "Pakistan",
+  deliveryNotes: "",
+});
+
+const isValidPhone = (value: string) => /^(\+?\d[\d\s-]{6,})$/.test(value.trim());
+
+const toAddressPayload = (draft: DeliveryAddressDraft): Omit<Address, "id"> => ({
+  label: draft.label,
+  fullName: draft.fullName,
+  fullAddress: draft.fullAddress,
+  houseNo: draft.houseNo,
+  street: draft.street,
+  landmark: draft.landmark,
+  area: draft.area,
+  city: draft.city,
+  state: draft.state || "",
+  zip: draft.postalCode || "",
+  postalCode: draft.postalCode,
+  country: draft.country,
+  phone: draft.phone,
+  lat: draft.lat,
+  lng: draft.lng,
+  placeId: draft.placeId,
+  deliveryNotes: draft.deliveryNotes,
+  isDefault: false,
+});
+
 export default function CheckoutPage() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const items = useAppSelector((state) => state.cart.items);
   const token = useAppSelector((state) => state.user.token);
   const persistedProfile = useAppSelector((state) => state.user.profile);
-  const cachedAddresses = readCachedAddresses();
-  const preferredCachedAddress = getPreferredAddress(cachedAddresses);
+  const fallbackContact = useMemo(
+    () => ({ fullName: persistedProfile?.name ?? "", email: persistedProfile?.email ?? "" }),
+    [persistedProfile],
+  );
+  const cachedAddresses = useMemo(() => readCachedAddresses(), []);
+  const preferredCachedAddress = useMemo(() => getPreferredAddress(cachedAddresses), [cachedAddresses]);
+
   const [step, setStep] = useState<0 | 1 | 2>(0);
-  const [shipping, setShipping] = useState<Shipping>({
-    name: persistedProfile?.name ?? "",
-    email: persistedProfile?.email ?? "",
-    address: preferredCachedAddress?.street ?? "",
-    city: preferredCachedAddress?.city ?? "",
-    state: preferredCachedAddress?.state ?? "",
-    zip: preferredCachedAddress?.zip ?? "",
-    country: preferredCachedAddress?.country ?? "",
-    phone: preferredCachedAddress?.phone ?? "",
-  });
   const [savedAddresses, setSavedAddresses] = useState<Address[]>(cachedAddresses);
   const [addressMode, setAddressMode] = useState<"saved" | "new">(
-    preferredCachedAddress ? "saved" : "new",
+    preferredCachedAddress?.lat !== undefined && preferredCachedAddress?.lng !== undefined ? "saved" : "new",
   );
   const [selectedAddressId, setSelectedAddressId] = useState(preferredCachedAddress?.id ?? "");
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<DeliveryAddressDraft>(
+    preferredCachedAddress ? buildDraftFromAddress(preferredCachedAddress, fallbackContact) : createEmptyDraft(fallbackContact),
+  );
   const [saveAddressForLater, setSaveAddressForLater] = useState(false);
   const [addressStatus, setAddressStatus] = useState<{ loading: boolean; error?: string }>({
     loading: Boolean(token) && cachedAddresses.length === 0,
   });
+  const [addressAction, setAddressAction] = useState<{ busyId?: string; saving: boolean }>({ saving: false });
+  const [autocompleteResults, setAutocompleteResults] = useState<GeocodedAddressSuggestion[]>([]);
+  const [autocompleteStatus, setAutocompleteStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
+  const [zoneStatus, setZoneStatus] = useState<DeliveryZoneQuote | null>(null);
+  const [zoneLoading, setZoneLoading] = useState(false);
+  const [zoneError, setZoneError] = useState("");
+  const [locationLoading, setLocationLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("easypaisa");
   const [note, setNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
-  const [couponStatus, setCouponStatus] = useState<{ loading: boolean; error?: string }>({
-    loading: false,
-  });
-  const [paymentSettings, setPaymentSettings] = useState({
-    paymentRequired: false,
-    allowCod: true,
-    allowDummy: true,
-  });
+  const [couponStatus, setCouponStatus] = useState<{ loading: boolean; error?: string }>({ loading: false });
+  const [paymentSettings, setPaymentSettings] = useState({ paymentRequired: false, allowCod: true, allowDummy: true });
   const [paymentSettingsError, setPaymentSettingsError] = useState("");
-  const [status, setStatus] = useState<{ loading: boolean; error?: string; done?: boolean }>({
-    loading: false,
-  });
+  const [status, setStatus] = useState<{ loading: boolean; error?: string; done?: boolean }>({ loading: false });
 
   const subTotal = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const selectedSavedAddress =
-    addressMode === "saved"
-      ? savedAddresses.find((entry) => entry.id === selectedAddressId) ?? null
-      : null;
-  const total = Math.max(subTotal - discount, 0);
+  const shippingFee = zoneStatus?.available && zoneStatus.zone ? zoneStatus.zone.shippingFee : 0;
+  const total = Math.max(subTotal - discount, 0) + shippingFee;
 
-  const resetShippingAddressFields = () => {
-    setShipping((prev) => ({
-      ...prev,
-      address: "",
-      city: "",
-      state: "",
-      zip: "",
-      country: "",
-      phone: "",
-    }));
+  const updateDraft = (patch: Partial<DeliveryAddressDraft>) => {
+    setDraft((prev) => ({ ...prev, ...patch }));
   };
 
+  const syncAddresses = (addresses: Address[]) => {
+    setSavedAddresses(addresses);
+    writeCachedAddresses(addresses);
+  };
+
+  const runZoneValidation = async (lat?: number, lng?: number, city?: string) => {
+    if (lat === undefined || lng === undefined) {
+      setZoneStatus(null);
+      setZoneError("");
+      return null;
+    }
+    try {
+      setZoneLoading(true);
+      setZoneError("");
+      const result = await validateDeliveryZone(lat, lng, city);
+      setZoneStatus(result);
+      return result;
+    } catch (error) {
+      const message = handleApiError(error);
+      setZoneError(message);
+      setZoneStatus(null);
+      return null;
+    } finally {
+      setZoneLoading(false);
+    }
+  };
+
+  const applySuggestion = async (suggestion: GeocodedAddressSuggestion) => {
+    setAutocompleteResults([]);
+    updateDraft({
+      fullAddress: suggestion.fullAddress,
+      houseNo: suggestion.houseNo || "",
+      street: suggestion.street || draft.street,
+      landmark: suggestion.landmark || draft.landmark,
+      area: suggestion.area || "",
+      city: suggestion.city || "",
+      state: suggestion.state || "",
+      postalCode: suggestion.postalCode || "",
+      country: suggestion.country || draft.country,
+      lat: suggestion.lat,
+      lng: suggestion.lng,
+      placeId: suggestion.placeId,
+    });
+    await runZoneValidation(suggestion.lat, suggestion.lng, suggestion.city);
+  };
   useEffect(() => {
     fetchPaymentSettings()
       .then((data) => {
@@ -142,40 +238,34 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!token) return;
-
     let active = true;
 
     Promise.allSettled([fetchProfile(), fetchAddresses()])
-      .then(([profileResult, addressesResult]) => {
-        if (!active) {
-          return;
-        }
+      .then(async ([profileResult, addressesResult]) => {
+        if (!active) return;
 
+        let contact = fallbackContact;
         if (profileResult.status === "fulfilled") {
-          setShipping((prev) => ({
+          contact = {
+            fullName: profileResult.value.name || fallbackContact.fullName,
+            email: profileResult.value.email || fallbackContact.email,
+          };
+          setDraft((prev) => ({
             ...prev,
-            name: prev.name || profileResult.value.name || "",
-            email: prev.email || profileResult.value.email || "",
+            fullName: prev.fullName || contact.fullName,
+            email: prev.email || contact.email,
           }));
         }
 
         if (addressesResult.status === "fulfilled") {
           const addresses = addressesResult.value || [];
-          setSavedAddresses(addresses);
-          writeCachedAddresses(addresses);
-          const defaultAddress = getPreferredAddress(addresses);
-          if (defaultAddress) {
-            setSelectedAddressId(defaultAddress.id);
+          syncAddresses(addresses);
+          const preferred = getPreferredAddress(addresses);
+          if (preferred?.lat !== undefined && preferred?.lng !== undefined) {
+            setSelectedAddressId(preferred.id);
             setAddressMode("saved");
-            setShipping((prev) => ({
-              ...prev,
-              address: defaultAddress.street,
-              city: defaultAddress.city,
-              state: defaultAddress.state,
-              zip: defaultAddress.zip,
-              country: defaultAddress.country,
-              phone: defaultAddress.phone,
-            }));
+            setDraft(buildDraftFromAddress(preferred, contact));
+            await runZoneValidation(preferred.lat, preferred.lng, preferred.city);
           } else {
             setAddressMode("new");
           }
@@ -184,102 +274,320 @@ export default function CheckoutPage() {
           setAddressStatus({ loading: false, error: handleApiError(addressesResult.reason) });
         }
       })
-      .catch((err) => {
+      .catch((error) => {
         if (active) {
-          setAddressStatus({ loading: false, error: handleApiError(err) });
+          setAddressStatus({ loading: false, error: handleApiError(error) });
         }
       });
 
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, fallbackContact]);
 
-  const applySavedAddress = (addressId: string) => {
-    const selected = savedAddresses.find((entry) => entry.id === addressId);
-    if (!selected) {
+  useEffect(() => {
+    if (addressMode !== "new") return;
+
+    const query = draft.fullAddress.trim();
+    if (query.length < 3) {
+      setAutocompleteResults([]);
+      setAutocompleteStatus({ loading: false });
       return;
     }
 
-    setSelectedAddressId(addressId);
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        setAutocompleteStatus({ loading: true });
+        const results = await autocompleteAddress(query);
+        setAutocompleteResults(results);
+        setAutocompleteStatus({ loading: false });
+      } catch (error) {
+        setAutocompleteResults([]);
+        setAutocompleteStatus({ loading: false, error: handleApiError(error) });
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [addressMode, draft.fullAddress]);
+
+  const selectSavedAddress = async (address: Address) => {
+    setSelectedAddressId(address.id);
     setAddressMode("saved");
-    setShipping((prev) => ({
-      ...prev,
-      address: selected.street,
-      city: selected.city,
-      state: selected.state,
-      zip: selected.zip,
-      country: selected.country,
-      phone: selected.phone,
-    }));
+    setEditingAddressId(null);
+    setDraft(buildDraftFromAddress(address, fallbackContact));
+    if (address.lat !== undefined && address.lng !== undefined) {
+      await runZoneValidation(address.lat, address.lng, address.city);
+    } else {
+      setZoneStatus(null);
+      setZoneError("This saved address needs a map pin. Edit it and confirm the location.");
+    }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleMarkerChange = async ({ lat, lng }: { lat: number; lng: number }) => {
+    updateDraft({ lat, lng });
+    try {
+      const suggestion = await reverseGeocodeAddress(lat, lng);
+      await applySuggestion(suggestion);
+    } catch (error) {
+      setZoneError(handleApiError(error));
+      await runZoneValidation(lat, lng, draft.city);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setAutocompleteStatus({ loading: false, error: "Geolocation is not supported on this device." });
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const suggestion = await reverseGeocodeAddress(position.coords.latitude, position.coords.longitude);
+          await applySuggestion(suggestion);
+        } catch (error) {
+          setAutocompleteStatus({ loading: false, error: handleApiError(error) });
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (error) => {
+        setLocationLoading(false);
+        setAutocompleteStatus({
+          loading: false,
+          error: error.code === error.PERMISSION_DENIED ? "Location access was denied." : "Could not fetch your current location.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
+    );
+  };
+
+  const handleEditAddress = (address: Address) => {
+    setAddressMode("new");
+    setEditingAddressId(address.id);
+    setSaveAddressForLater(true);
+    setDraft(buildDraftFromAddress(address, fallbackContact));
+    if (address.lat !== undefined && address.lng !== undefined) {
+      void runZoneValidation(address.lat, address.lng, address.city);
+    }
+  };
+
+  const handleDeleteAddress = async (address: Address) => {
+    try {
+      setAddressAction({ saving: false, busyId: address.id });
+      await deleteAddress(address.id);
+      const remaining = savedAddresses.filter((entry) => entry.id !== address.id);
+      syncAddresses(remaining);
+      if (selectedAddressId === address.id) {
+        const preferred = getPreferredAddress(remaining);
+        if (preferred) {
+          await selectSavedAddress(preferred);
+        } else {
+          setAddressMode("new");
+          setSelectedAddressId("");
+          setDraft(createEmptyDraft(fallbackContact));
+          setZoneStatus(null);
+        }
+      }
+    } catch (error) {
+      setStatus({ loading: false, error: handleApiError(error) });
+    } finally {
+      setAddressAction({ saving: false });
+    }
+  };
+
+  const handleSetDefault = async (address: Address) => {
+    try {
+      setAddressAction({ saving: false, busyId: address.id });
+      const updated = (await setDefaultAddress(address.id)) as Address;
+      const next = savedAddresses.map((entry) => ({
+        ...entry,
+        ...(entry.id === updated.id ? updated : { isDefault: false }),
+      }));
+      syncAddresses(next);
+      await selectSavedAddress({ ...updated, isDefault: true });
+    } catch (error) {
+      setStatus({ loading: false, error: handleApiError(error) });
+    } finally {
+      setAddressAction({ saving: false });
+    }
+  };
+
+  const persistDraftAddress = async () => {
+    if (!token || (!saveAddressForLater && !editingAddressId)) return null;
+
+    const payload = toAddressPayload(draft);
+
+    if (editingAddressId) {
+      const updated = (await updateAddress(editingAddressId, payload)) as Address;
+      const next = savedAddresses.map((entry) => (entry.id === updated.id ? updated : entry));
+      syncAddresses(next);
+      setSelectedAddressId(updated.id);
+      return updated;
+    }
+
+    const alreadySaved = savedAddresses.some(
+      (entry) =>
+        (entry.fullAddress || entry.street).trim().toLowerCase() === draft.fullAddress.trim().toLowerCase() &&
+        entry.phone.trim() === draft.phone.trim(),
+    );
+
+    if (alreadySaved) return null;
+
+    const created = (await createAddress({ ...payload, isDefault: savedAddresses.length === 0 })) as Address;
+    syncAddresses([created, ...savedAddresses]);
+    setSelectedAddressId(created.id);
+    return created;
+  };
+
+  const validateDraft = async () => {
+    if (!draft.fullName.trim() || !draft.email.trim() || !draft.phone.trim()) {
+      return "Complete the customer name, email, and phone number.";
+    }
+    if (!isValidPhone(draft.phone)) {
+      return "Enter a valid phone number.";
+    }
+    if (!draft.fullAddress.trim() || !draft.street.trim() || !draft.city.trim() || !draft.country.trim()) {
+      return "Complete the delivery address before continuing.";
+    }
+    if (draft.lat === undefined || draft.lng === undefined) {
+      return "Pick a delivery location on the map before continuing.";
+    }
+
+    const quote = await runZoneValidation(draft.lat, draft.lng, draft.city);
+    if (!quote?.available || !quote.zone) {
+      return quote?.message || "Delivery not available in this area.";
+    }
+
+    return null;
+  };
+  const buildShippingPayload = (): DeliveryAddressInput | null => {
+    const deliveryNotes = [draft.deliveryNotes, note].filter(Boolean).join(" | ");
+
+    if (addressMode === "saved") {
+      const selected = savedAddresses.find((entry) => entry.id === selectedAddressId);
+      if (!selected || selected.lat === undefined || selected.lng === undefined) return null;
+
+      return {
+        addressId: selected.id,
+        label: selected.label || draft.label,
+        fullName: draft.fullName,
+        email: draft.email,
+        phone: selected.phone,
+        fullAddress:
+          selected.fullAddress ||
+          [selected.houseNo, selected.street, selected.area, selected.city, selected.postalCode || selected.zip, selected.country]
+            .filter(Boolean)
+            .join(", "),
+        houseNo: selected.houseNo || undefined,
+        street: selected.street,
+        landmark: selected.landmark || undefined,
+        area: selected.area || undefined,
+        city: selected.city,
+        state: selected.state || undefined,
+        postalCode: selected.postalCode || selected.zip || undefined,
+        country: selected.country,
+        lat: selected.lat,
+        lng: selected.lng,
+        placeId: selected.placeId || undefined,
+        deliveryNotes: deliveryNotes || selected.deliveryNotes || undefined,
+      };
+    }
+
+    if (draft.lat === undefined || draft.lng === undefined) return null;
+
+    return {
+      addressId: draft.addressId,
+      label: draft.label,
+      fullName: draft.fullName,
+      email: draft.email,
+      phone: draft.phone,
+      fullAddress: draft.fullAddress,
+      houseNo: draft.houseNo || undefined,
+      street: draft.street,
+      landmark: draft.landmark || undefined,
+      area: draft.area || undefined,
+      city: draft.city,
+      state: draft.state || undefined,
+      postalCode: draft.postalCode || undefined,
+      country: draft.country,
+      lat: draft.lat,
+      lng: draft.lng,
+      placeId: draft.placeId || undefined,
+      deliveryNotes: deliveryNotes || undefined,
+    };
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+
     if (step < 2) {
       if (step === 0) {
         if (addressMode === "saved") {
           const selected = savedAddresses.find((entry) => entry.id === selectedAddressId);
           if (!selected) {
-            setStatus({ loading: false, error: "Select a saved address or enter a new one." });
+            setStatus({ loading: false, error: "Select a saved address or add a new one." });
             return;
           }
-          setShipping((prev) => ({
-            ...prev,
-            address: selected.street,
-            city: selected.city,
-            state: selected.state,
-            zip: selected.zip,
-            country: selected.country,
-            phone: selected.phone,
-          }));
-        } else if (
-          !shipping.name.trim() ||
-          !shipping.email.trim() ||
-          !shipping.address.trim() ||
-          !shipping.city.trim() ||
-          !shipping.country.trim()
-        ) {
-          setStatus({ loading: false, error: "Complete shipping details before continuing." });
-          return;
+          if (selected.lat === undefined || selected.lng === undefined) {
+            setStatus({ loading: false, error: "This saved address needs a map pin. Edit it and confirm the location." });
+            return;
+          }
+          const quote = await runZoneValidation(selected.lat, selected.lng, selected.city);
+          if (!quote?.available) {
+            setStatus({ loading: false, error: quote?.message || "Delivery not available in this area." });
+            return;
+          }
+        } else {
+          const draftError = await validateDraft();
+          if (draftError) {
+            setStatus({ loading: false, error: draftError });
+            return;
+          }
+          try {
+            setAddressAction({ saving: true });
+            await persistDraftAddress();
+            setEditingAddressId(null);
+          } catch (error) {
+            setAddressAction({ saving: false });
+            setStatus({ loading: false, error: handleApiError(error) });
+            return;
+          } finally {
+            setAddressAction({ saving: false });
+          }
         }
       }
+
       setStatus({ loading: false, error: undefined });
       setStep((prev) => (prev + 1) as 0 | 1 | 2);
       return;
     }
+
     try {
       if (!token) {
         router.push("/login");
         return;
       }
+
       setStatus({ loading: true });
+      const shippingPayload = buildShippingPayload();
+      if (!shippingPayload) {
+        setStatus({ loading: false, error: "Select or create a valid delivery address first." });
+        return;
+      }
+
+      const quote = await runZoneValidation(shippingPayload.lat, shippingPayload.lng, shippingPayload.city);
+      if (!quote?.available || !quote.zone) {
+        setStatus({ loading: false, error: quote?.message || "Delivery not available in this area." });
+        return;
+      }
       if (paymentSettings.paymentRequired && paymentMethod === "cod") {
         setStatus({ loading: false, error: "Please select a payment method to continue." });
         return;
       }
-      const shippingPayload =
-        addressMode === "saved"
-          ? (() => {
-              const selected = savedAddresses.find((entry) => entry.id === selectedAddressId);
-              if (!selected) {
-                return null;
-              }
-              return {
-                name: shipping.name,
-                email: shipping.email,
-                address: selected.street,
-                city: selected.city,
-                state: selected.state,
-                zip: selected.zip,
-                country: selected.country,
-                phone: selected.phone,
-              };
-            })()
-          : shipping;
-
-      if (!shippingPayload) {
-        setStatus({ loading: false, error: "Select a saved address or enter a new one." });
+      if (paymentMethod === "cod" && !quote.zone.codAvailable) {
+        setStatus({ loading: false, error: "Cash on delivery is not available for this address." });
         return;
       }
 
@@ -309,41 +617,22 @@ export default function CheckoutPage() {
       const productMap = new Map(products.map((product) => [product.id, product]));
       const resolvedItems = sanitizedItems.map((item) => {
         const product = productMap.get(item.productId);
-        if (!product) {
-          return null;
-        }
+        if (!product) return null;
 
-        let variant = item.variantId
-          ? product.variants?.find((entry) => entry.id === item.variantId)
-          : undefined;
-
+        let variant = item.variantId ? product.variants?.find((entry) => entry.id === item.variantId) : undefined;
         if (!variant && item.color) {
-          variant = product.variants?.find(
-            (entry) => entry.color.trim().toLowerCase() === item.color?.trim().toLowerCase(),
-          );
+          variant = product.variants?.find((entry) => entry.color.trim().toLowerCase() === item.color?.trim().toLowerCase());
         }
-
-        if (!variant && product.variants?.length === 1) {
-          variant = product.variants[0];
-        }
+        if (!variant && product.variants?.length === 1) variant = product.variants[0];
 
         if (product.variants?.length) {
-          if (!variant) {
-            return null;
-          }
-
+          if (!variant) return null;
           const size = variant.sizes.find(
             (entry) =>
-              (item.sizeUS &&
-                entry.sizeUS?.trim().toLowerCase() === item.sizeUS.trim().toLowerCase()) ||
-              (item.sizeEU &&
-                entry.sizeEU?.trim().toLowerCase() === item.sizeEU.trim().toLowerCase()),
+              (item.sizeUS && entry.sizeUS?.trim().toLowerCase() === item.sizeUS.trim().toLowerCase()) ||
+              (item.sizeEU && entry.sizeEU?.trim().toLowerCase() === item.sizeEU.trim().toLowerCase()),
           );
-
-          if (!size) {
-            return null;
-          }
-
+          if (!size) return null;
           return {
             productId: item.productId,
             variantId: variant.id,
@@ -366,59 +655,17 @@ export default function CheckoutPage() {
       });
 
       if (resolvedItems.some((item) => !item)) {
-        setStatus({
-          loading: false,
-          error: "One or more cart items are outdated. Remove that item and add it again.",
-        });
+        setStatus({ loading: false, error: "One or more cart items are outdated. Remove that item and add it again." });
         return;
       }
 
-      const finalItems = resolvedItems.filter(
-        (
-          item,
-        ): item is NonNullable<(typeof resolvedItems)[number]> => item !== null,
-      );
-
-      if (token && addressMode === "new" && saveAddressForLater) {
-        const alreadySaved = savedAddresses.some(
-          (entry) =>
-            entry.street.trim().toLowerCase() === shippingPayload.address.trim().toLowerCase() &&
-            entry.city.trim().toLowerCase() === shippingPayload.city.trim().toLowerCase() &&
-            entry.country.trim().toLowerCase() === shippingPayload.country.trim().toLowerCase(),
-        );
-
-        if (!alreadySaved) {
-          const createdAddress = await createAddress({
-            label: "Checkout address",
-            street: shippingPayload.address,
-            city: shippingPayload.city,
-            state: shippingPayload.state,
-            zip: shippingPayload.zip,
-            country: shippingPayload.country,
-            phone: shippingPayload.phone,
-            isDefault: savedAddresses.length === 0,
-          });
-          setSavedAddresses((prev) => {
-            const next = [createdAddress, ...prev];
-            writeCachedAddresses(next);
-            return next;
-          });
-        }
-      }
-
-      await createOrder({
-        items: finalItems,
-        shipping: Object.fromEntries(
-          Object.entries({ ...shippingPayload, note }).filter(([, value]) => value.trim().length > 0),
-        ),
-        paymentMethod,
-        couponCode: couponCode || undefined,
-      });
+      const finalItems = resolvedItems.filter((item): item is NonNullable<(typeof resolvedItems)[number]> => item !== null);
+      await createOrder({ items: finalItems, shipping: shippingPayload, paymentMethod, couponCode: couponCode || undefined });
       dispatch(clearCart());
       setStatus({ loading: false, done: true });
       router.push("/account");
-    } catch (err) {
-      setStatus({ loading: false, error: handleApiError(err) });
+    } catch (error) {
+      setStatus({ loading: false, error: handleApiError(error) });
     }
   };
 
@@ -426,236 +673,83 @@ export default function CheckoutPage() {
     <div className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-8 flex flex-wrap gap-3 text-sm">
         {["Shipping", "Payment", "Review"].map((label, idx) => (
-          <div
-            key={label}
-            className={`pill ${
-              idx === step ? "!bg-black !text-white !border-black" : "!bg-white !text-gray-800"
-            }`}
-          >
+          <div key={label} className={`pill ${idx === step ? "!border-black !bg-black !text-white" : "!bg-white !text-gray-800"}`}>
             {idx + 1}. {label}
           </div>
         ))}
       </div>
       <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {!token && (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Log in first to place your order. Your cart will stay saved.
-            </div>
-          )}
-          {paymentSettingsError && (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Payment settings could not be refreshed. Default checkout options are being used.
-            </div>
-          )}
+          {!token && <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Log in first to place your order. Your cart will stay saved.</div>}
+          {paymentSettingsError && <div className="rounded-3xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Payment settings could not be refreshed. Default checkout options are being used.</div>}
           {step === 0 && (
-            <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
-              <h2 className="text-xl font-semibold text-gray-900">Shipping details</h2>
-              {token && savedAddresses.length > 0 ? (
-                <div className="space-y-4 rounded-2xl border border-black/10 bg-slate-50/70 p-4">
+            <div className="space-y-5 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Delivery address</h2>
+                  <p className="mt-1 text-sm text-gray-500">Choose a saved address or add a new delivery location.</p>
+                </div>
+                {token ? (
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddressMode("saved");
-                        const defaultAddress =
-                          savedAddresses.find((entry) => entry.isDefault) ?? savedAddresses[0];
-                        if (defaultAddress) {
-                          applySavedAddress(defaultAddress.id);
-                        }
-                      }}
-                      className={`rounded-full px-4 py-2 text-sm font-medium ${
-                        addressMode === "saved"
-                          ? "bg-black text-white"
-                          : "border border-black/10 bg-white text-gray-700"
-                      }`}
-                    >
+                    <button type="button" onClick={() => {
+                      const preferred = getPreferredAddress(savedAddresses);
+                      if (preferred) void selectSavedAddress(preferred);
+                    }} className={`rounded-full px-4 py-2 text-sm font-medium ${addressMode === "saved" ? "bg-black text-white" : "border border-black/10 bg-white text-gray-700"}`}>
                       Saved addresses
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAddressMode("new");
-                        setSelectedAddressId("");
-                        setSaveAddressForLater(false);
-                        resetShippingAddressFields();
-                      }}
-                      className={`rounded-full px-4 py-2 text-sm font-medium ${
-                        addressMode === "new"
-                          ? "bg-black text-white"
-                          : "border border-black/10 bg-white text-gray-700"
-                      }`}
-                    >
+                    <button type="button" onClick={() => {
+                      setAddressMode("new");
+                      setEditingAddressId(null);
+                      setSelectedAddressId("");
+                      setSaveAddressForLater(false);
+                      setDraft(createEmptyDraft(fallbackContact));
+                      setZoneStatus(null);
+                      setZoneError("");
+                    }} className={`rounded-full px-4 py-2 text-sm font-medium ${addressMode === "new" ? "bg-black text-white" : "border border-black/10 bg-white text-gray-700"}`}>
                       Add new address
                     </button>
                   </div>
+                ) : null}
+              </div>
 
-                  {addressMode === "saved" && selectedSavedAddress ? (
-                    <>
-                      <div className="grid gap-3 md:grid-cols-2">
-                        {savedAddresses.map((address) => {
-                          const isSelected = selectedAddressId === address.id;
-                          return (
-                            <button
-                              key={address.id}
-                              type="button"
-                              onClick={() => applySavedAddress(address.id)}
-                              className={`rounded-2xl border px-4 py-4 text-left transition ${
-                                isSelected
-                                  ? "border-black bg-black text-white"
-                                  : "border-black/10 bg-white text-gray-900"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-3">
-                                  <span
-                                    className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-semibold ${
-                                      isSelected
-                                        ? "border-white bg-white text-black"
-                                        : "border-black/20 bg-transparent text-transparent"
-                                    }`}
-                                    aria-hidden="true"
-                                  >
-                                    {isSelected ? "v" : ""}
-                                  </span>
-                                  <div>
-                                    <p className="text-sm font-semibold">{address.label || "Saved address"}</p>
-                                    <p
-                                      className={`mt-2 text-sm ${
-                                        isSelected ? "text-white/85" : "text-gray-600"
-                                      }`}
-                                    >
-                                      {address.street}, {address.city}, {address.state} {address.zip}
-                                    </p>
-                                    <p
-                                      className={`text-xs ${
-                                        isSelected ? "text-white/70" : "text-gray-500"
-                                      }`}
-                                    >
-                                      {address.country} - {address.phone}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  {address.isDefault && (
-                                    <span
-                                      className={`rounded-full px-2 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                                        isSelected
-                                          ? "bg-white/15 text-white"
-                                          : "bg-black/5 text-gray-600"
-                                      }`}
-                                    >
-                                      Default
-                                    </span>
-                                  )}
-                                  <span
-                                    className={`rounded-full px-3 py-1 text-[11px] font-medium ${
-                                      isSelected
-                                        ? "bg-white text-black"
-                                        : "border border-black/10 bg-white text-gray-700"
-                                    }`}
-                                  >
-                                    {isSelected ? "Selected" : "Use this address"}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : null}
+              {addressStatus.error && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Saved addresses could not be loaded. You can still add a new address.</div>}
 
-                </div>
-              ) : null}
-              {addressStatus.error && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Saved addresses could not be loaded. You can still enter a new address.
-                </div>
-              )}
-
-              {addressMode === "new" || savedAddresses.length === 0 ? (
+              {addressMode === "saved" && savedAddresses.length > 0 ? (
                 <>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <Input
-                      label="Full name"
-                      required
-                      value={shipping.name}
-                      onChange={(e) => setShipping({ ...shipping, name: e.target.value })}
-                    />
-                    <Input
-                      label="Email"
-                      type="email"
-                      required
-                      value={shipping.email}
-                      onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
-                    />
+                    <Input label="Full name" required value={draft.fullName} onChange={(event) => updateDraft({ fullName: event.target.value })} />
+                    <Input label="Email" type="email" required value={draft.email} onChange={(event) => updateDraft({ email: event.target.value })} />
                   </div>
-                  <Input
-                    label="Address"
-                    required
-                    value={shipping.address}
-                    onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
+                  <SavedAddressList
+                    addresses={savedAddresses}
+                    selectedId={selectedAddressId}
+                    busyId={addressAction.busyId}
+                    onSelect={(address) => void selectSavedAddress(address)}
+                    onSetDefault={(address) => void handleSetDefault(address)}
+                    onEdit={handleEditAddress}
+                    onDelete={(address) => void handleDeleteAddress(address)}
                   />
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Input
-                      label="City"
-                      required
-                      value={shipping.city}
-                      onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
-                    />
-                    <Input
-                      label="State / Province"
-                      value={shipping.state}
-                      onChange={(e) => setShipping({ ...shipping, state: e.target.value })}
-                    />
-                    <Input
-                      label="Country"
-                      required
-                      value={shipping.country}
-                      onChange={(e) => setShipping({ ...shipping, country: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Input
-                      label="ZIP / Postal code"
-                      value={shipping.zip}
-                      onChange={(e) => setShipping({ ...shipping, zip: e.target.value })}
-                    />
-                  </div>
-                  <Input
-                    label="Phone"
-                    value={shipping.phone}
-                    onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
-                    placeholder="03xx xxxxxxx"
-                  />
-                  {token && (
-                    <label className="flex items-center gap-2 text-sm text-gray-600">
-                      <input
-                        type="checkbox"
-                        checked={saveAddressForLater}
-                        onChange={(e) => setSaveAddressForLater(e.target.checked)}
-                      />
-                      Save this address for next checkout
-                    </label>
-                  )}
+                  <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
                 </>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Input
-                    label="Full name"
-                    required
-                    value={shipping.name}
-                    onChange={(e) => setShipping({ ...shipping, name: e.target.value })}
-                  />
-                  <Input
-                    label="Email"
-                    type="email"
-                    required
-                    value={shipping.email}
-                    onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
-                  />
-                </div>
+                <AddressForm
+                  value={draft}
+                  suggestions={autocompleteResults}
+                  suggestionLoading={autocompleteStatus.loading}
+                  suggestionError={autocompleteStatus.error}
+                  zoneStatus={zoneStatus}
+                  zoneLoading={zoneLoading}
+                  zoneError={zoneError}
+                  geolocationLoading={locationLoading}
+                  saveForLater={saveAddressForLater}
+                  editMode={Boolean(editingAddressId)}
+                  onChange={updateDraft}
+                  onSuggestionInputChange={(value) => updateDraft({ fullAddress: value })}
+                  onSuggestionSelect={(suggestion) => void applySuggestion(suggestion)}
+                  onMarkerChange={(coords) => void handleMarkerChange(coords)}
+                  onUseCurrentLocation={handleUseCurrentLocation}
+                  onSaveForLaterChange={setSaveAddressForLater}
+                />
               )}
             </div>
           )}
@@ -663,81 +757,41 @@ export default function CheckoutPage() {
           {step === 1 && (
             <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
               <h2 className="text-xl font-semibold text-gray-900">Payment method</h2>
-              {paymentSettings.paymentRequired && (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                  Payment required is enabled. COD will be disabled.
-                </div>
-              )}
+              {paymentSettings.paymentRequired && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">Payment required is enabled. COD will be disabled.</div>}
               {[
                 { id: "easypaisa", label: "EasyPaisa" },
                 { id: "jazzcash", label: "JazzCash" },
-                ...(paymentSettings.allowDummy
-                  ? [{ id: "dummy", label: "Dummy test payment (paid)" }]
-                  : []),
+                ...(paymentSettings.allowDummy ? [{ id: "dummy", label: "Dummy test payment (paid)" }] : []),
                 ...(paymentSettings.allowCod ? [{ id: "cod", label: "Cash on Delivery" }] : []),
               ].map((method) => (
-                <label
-                  key={method.id}
-                  className={`flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 ${
-                    paymentMethod === method.id
-                      ? "border-black bg-black text-white"
-                      : "border-black/10 bg-white text-gray-800"
-                  }`}
-                >
+                <label key={method.id} className={`flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-3 ${paymentMethod === method.id ? "border-black bg-black text-white" : "border-black/10 bg-white text-gray-800"}`}>
                   <span className="text-sm font-medium">{method.label}</span>
-                  <input
-                    type="radio"
-                    name="payment"
-                    value={method.id}
-                    checked={paymentMethod === method.id}
-                    onChange={() => setPaymentMethod(method.id)}
-                    className="h-4 w-4"
-                  />
+                  <input type="radio" name="payment" value={method.id} checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} className="h-4 w-4" />
                 </label>
               ))}
-              <Input
-                label="Order note (optional)"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Sizing, delivery windows, or special handling"
-              />
+              <Input label="Order note (optional)" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Delivery timing, gate number, or special handling" />
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-3 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
               <h2 className="text-xl font-semibold text-gray-900">Review</h2>
-              <p className="text-sm text-gray-600">
-                Shipping to {shipping.address}, {shipping.city}
-                {shipping.state ? `, ${shipping.state}` : ""}
-                {shipping.zip ? ` ${shipping.zip}` : ""}, {shipping.country}
-              </p>
+              <p className="text-sm text-gray-600">Deliver to {draft.fullName} - {draft.phone}</p>
+              <p className="text-sm text-gray-600">{draft.fullAddress}</p>
+              <p className="text-sm text-gray-600">{draft.area ? `${draft.area}, ` : ""}{draft.city}{draft.state ? `, ${draft.state}` : ""}{draft.postalCode ? ` ${draft.postalCode}` : ""}, {draft.country}</p>
               <p className="text-sm text-gray-600">Payment: {paymentMethod}</p>
-              <p className="text-sm font-semibold text-gray-900">
-                Total: {formatCurrency(total)}
-              </p>
+              <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
+              <p className="text-sm font-semibold text-gray-900">Total: {formatCurrency(total)}</p>
             </div>
           )}
 
           <div className="flex gap-3">
-            {step > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStep((prev) => (prev - 1) as 0 | 1 | 2)}
-              >
-                Back
-              </Button>
-            )}
-            <Button variant="primary" type="submit" disabled={status.loading}>
-              {!token ? "Log in to continue" : step < 2 ? "Continue" : "Place order"}
+            {step > 0 && <Button type="button" variant="ghost" onClick={() => setStep((prev) => (prev - 1) as 0 | 1 | 2)}>Back</Button>}
+            <Button variant="primary" type="submit" disabled={status.loading || addressAction.saving || addressStatus.loading}>
+              {!token ? "Log in to continue" : status.loading ? "Processing..." : addressAction.saving ? "Saving address..." : step < 2 ? "Continue" : "Place order"}
             </Button>
           </div>
-          {status.error && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-              {status.error}
-            </div>
-          )}
+          {status.error && <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">{status.error}</div>}
         </form>
 
         <div className="space-y-4 rounded-3xl border border-black/10 bg-white p-6 shadow-[0_14px_60px_rgba(12,22,44,0.08)]">
@@ -750,73 +804,42 @@ export default function CheckoutPage() {
               <div key={item.id} className="flex items-center justify-between text-sm">
                 <div>
                   <p className="font-medium text-gray-900">{item.name}</p>
-                  <p className="text-gray-500">
-                    {item.quantity} - {formatCurrency(item.price)} {item.color ? `- ${item.color}` : ""}{item.sizeUS || item.sizeEU
-                      ? ` - ${item.sizeUS ? `US ${item.sizeUS}` : ""}${item.sizeUS && item.sizeEU ? " / " : ""}${item.sizeEU ? `EU ${item.sizeEU}` : ""}`
-                      : ""}
-                  </p>
+                  <p className="text-gray-500">{item.quantity} - {formatCurrency(item.price)} {item.color ? `- ${item.color}` : ""}{item.sizeUS || item.sizeEU ? ` - ${item.sizeUS ? `US ${item.sizeUS}` : ""}${item.sizeUS && item.sizeEU ? " / " : ""}${item.sizeEU ? `EU ${item.sizeEU}` : ""}` : ""}</p>
                 </div>
-                <span className="font-semibold text-gray-900">
-                  {formatCurrency(item.price * item.quantity)}
-                </span>
+                <span className="font-semibold text-gray-900">{formatCurrency(item.price * item.quantity)}</span>
               </div>
             ))}
           </div>
           <div className="border-t border-black/10 pt-4 text-sm">
-            <div className="flex items-center justify-between text-gray-700">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subTotal)}</span>
-            </div>
-            {discount > 0 && (
-              <div className="mt-2 flex items-center justify-between text-gray-700">
-                <span>Discount</span>
-                <span>-{formatCurrency(discount)}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between text-gray-700">
-              <span>Shipping</span>
-              <span className="text-green-600">Complimentary</span>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-base font-semibold text-gray-900">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
-            </div>
+            <div className="flex items-center justify-between text-gray-700"><span>Subtotal</span><span>{formatCurrency(subTotal)}</span></div>
+            {discount > 0 && <div className="mt-2 flex items-center justify-between text-gray-700"><span>Discount</span><span>-{formatCurrency(discount)}</span></div>}
+            <div className="mt-2 flex items-center justify-between text-gray-700"><span>Shipping</span><span className={shippingFee === 0 ? "text-green-600" : "text-gray-900"}>{shippingFee === 0 ? "Free" : formatCurrency(shippingFee)}</span></div>
+            <div className="mt-3 flex items-center justify-between text-base font-semibold text-gray-900"><span>Total</span><span>{formatCurrency(total)}</span></div>
           </div>
           <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-700 shadow-[0_12px_40px_rgba(12,22,44,0.08)]">
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Input
-                  label="Coupon code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value)}
-                />
+                <Input label="Coupon code" value={couponCode} onChange={(event) => setCouponCode(event.target.value)} />
               </div>
-              <Button
-                variant="ghost"
-                onClick={async () => {
-                  if (!couponCode) return;
-                  try {
-                    setCouponStatus({ loading: true });
-                    const data = await validateCoupon(couponCode, subTotal);
-                    setDiscount(data.discount);
-                    setCouponStatus({ loading: false });
-                  } catch (err) {
-                    setCouponStatus({ loading: false, error: handleApiError(err) });
-                    setDiscount(0);
-                  }
-                }}
-                disabled={couponStatus.loading}
-              >
+              <Button variant="ghost" onClick={async () => {
+                if (!couponCode) return;
+                try {
+                  setCouponStatus({ loading: true });
+                  const data = await validateCoupon(couponCode, subTotal);
+                  setDiscount(data.discount);
+                  setCouponStatus({ loading: false });
+                } catch (error) {
+                  setCouponStatus({ loading: false, error: handleApiError(error) });
+                  setDiscount(0);
+                }
+              }} disabled={couponStatus.loading}>
                 {couponStatus.loading ? "Applying..." : "Apply"}
               </Button>
             </div>
-            {couponStatus.error && (
-              <p className="mt-2 text-xs text-rose-500">{couponStatus.error}</p>
-            )}
+            {couponStatus.error && <p className="mt-2 text-xs text-rose-500">{couponStatus.error}</p>}
           </div>
         </div>
       </div>
     </div>
   );
 }
-

@@ -1,0 +1,182 @@
+"use client";
+
+import Input from "@/components/ui/input";
+import { DeliveryAddressInput, DeliveryZoneQuote, GeocodedAddressSuggestion } from "@/lib/types";
+import AddressPicker from "./address-picker";
+import DeliveryZoneStatus from "./delivery-zone-status";
+
+export type DeliveryAddressDraft = Omit<DeliveryAddressInput, "lat" | "lng"> & {
+  lat?: number;
+  lng?: number;
+};
+
+type Props = {
+  value: DeliveryAddressDraft;
+  suggestions: GeocodedAddressSuggestion[];
+  suggestionLoading: boolean;
+  suggestionError?: string;
+  zoneStatus: DeliveryZoneQuote | null;
+  zoneLoading?: boolean;
+  zoneError?: string;
+  geolocationLoading?: boolean;
+  saveForLater: boolean;
+  editMode?: boolean;
+  onChange: (patch: Partial<DeliveryAddressDraft>) => void;
+  onSuggestionInputChange: (value: string) => void;
+  onSuggestionSelect: (suggestion: GeocodedAddressSuggestion) => void;
+  onMarkerChange: (coords: { lat: number; lng: number }) => void;
+  onUseCurrentLocation: () => void;
+  onSaveForLaterChange: (value: boolean) => void;
+};
+
+const labelOptions: Array<DeliveryAddressDraft["label"]> = ["Home", "Office", "Other"];
+
+export default function AddressForm({
+  value,
+  suggestions,
+  suggestionLoading,
+  suggestionError,
+  zoneStatus,
+  zoneLoading,
+  zoneError,
+  geolocationLoading,
+  saveForLater,
+  editMode,
+  onChange,
+  onSuggestionInputChange,
+  onSuggestionSelect,
+  onMarkerChange,
+  onUseCurrentLocation,
+  onSaveForLaterChange,
+}: Props) {
+  return (
+    <div className="space-y-5">
+      <AddressPicker
+        value={value.fullAddress}
+        suggestions={suggestions}
+        loading={suggestionLoading}
+        error={suggestionError}
+        lat={value.lat}
+        lng={value.lng}
+        onValueChange={(fullAddress) => {
+          onChange({ fullAddress });
+          onSuggestionInputChange(fullAddress);
+        }}
+        onSelectSuggestion={onSuggestionSelect}
+        onMarkerChange={onMarkerChange}
+        onUseCurrentLocation={onUseCurrentLocation}
+        locationLoading={geolocationLoading}
+      />
+
+      <DeliveryZoneStatus status={zoneStatus} loading={zoneLoading} error={zoneError} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Input
+          label="Full name"
+          required
+          value={value.fullName}
+          onChange={(event) => onChange({ fullName: event.target.value })}
+        />
+        <Input
+          label="Email"
+          type="email"
+          required
+          value={value.email}
+          onChange={(event) => onChange({ email: event.target.value })}
+        />
+        <Input
+          label="Phone number"
+          required
+          value={value.phone}
+          onChange={(event) => onChange({ phone: event.target.value })}
+          placeholder="03xx xxxxxxx"
+        />
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-gray-900">Address label</span>
+          <div className="flex flex-wrap gap-2">
+            {labelOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onChange({ label: option })}
+                className={`rounded-full px-4 py-2 text-sm font-medium ${
+                  value.label === option
+                    ? "bg-black text-white"
+                    : "border border-black/10 bg-white text-gray-700"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Input
+          label="House / Flat / Apartment / Floor"
+          value={value.houseNo || ""}
+          onChange={(event) => onChange({ houseNo: event.target.value })}
+        />
+        <Input
+          label="Street / Block / Sector"
+          required
+          value={value.street}
+          onChange={(event) => onChange({ street: event.target.value })}
+        />
+        <Input
+          label="Landmark"
+          value={value.landmark || ""}
+          onChange={(event) => onChange({ landmark: event.target.value })}
+        />
+        <Input
+          label="Area"
+          value={value.area || ""}
+          onChange={(event) => onChange({ area: event.target.value })}
+        />
+        <Input
+          label="City"
+          required
+          value={value.city}
+          onChange={(event) => onChange({ city: event.target.value })}
+        />
+        <Input
+          label="State / Province"
+          value={value.state || ""}
+          onChange={(event) => onChange({ state: event.target.value })}
+        />
+        <Input
+          label="Postal code"
+          value={value.postalCode || ""}
+          onChange={(event) => onChange({ postalCode: event.target.value })}
+        />
+        <Input
+          label="Country"
+          required
+          value={value.country}
+          onChange={(event) => onChange({ country: event.target.value })}
+        />
+      </div>
+
+      <label className="flex flex-col gap-2 text-sm text-gray-700">
+        <span className="text-sm font-medium text-gray-900">Delivery notes</span>
+        <textarea
+          value={value.deliveryNotes || ""}
+          onChange={(event) => onChange({ deliveryNotes: event.target.value })}
+          rows={4}
+          placeholder="Delivery timing, gate number, or rider instructions"
+          className="w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-gray-900 shadow-[0_12px_40px_rgba(12,22,44,0.06)] outline-none transition focus:border-black/30"
+        />
+      </label>
+
+      <label className="flex items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={saveForLater}
+          onChange={(event) => onSaveForLaterChange(event.target.checked)}
+        />
+        {editMode ? "Update this saved address" : "Save this address for next checkout"}
+      </label>
+    </div>
+  );
+}

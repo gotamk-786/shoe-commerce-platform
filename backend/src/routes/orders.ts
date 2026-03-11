@@ -7,6 +7,7 @@ import { sendMail } from "../lib/mailer";
 import { sendSms } from "../lib/sms";
 import { logActivity } from "../lib/activity";
 import { buildOrderCode } from "../lib/order-code";
+import { DeliveryZoneRecord, findMatchingZone } from "../lib/delivery-zones";
 import PDFDocument from "pdfkit";
 
 const router = Router();
@@ -23,7 +24,26 @@ const orderItemSchema = z.object({
 
 const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1),
-  shipping: z.record(z.string()).optional(),
+  shipping: z.object({
+    addressId: z.string().optional(),
+    label: z.string().optional(),
+    fullName: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().min(6),
+    fullAddress: z.string().min(1),
+    houseNo: z.string().optional(),
+    street: z.string().min(1),
+    landmark: z.string().optional(),
+    area: z.string().optional(),
+    city: z.string().min(1),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    country: z.string().min(1),
+    lat: z.number(),
+    lng: z.number(),
+    placeId: z.string().optional(),
+    deliveryNotes: z.string().optional(),
+  }),
   paymentMethod: z.string().optional(),
   couponCode: z.string().optional(),
 });
@@ -31,7 +51,7 @@ const createOrderSchema = z.object({
 router.get("/", requireUser, async (req, res, next) => {
   try {
     const userId = req.user?.id;
-    const orders = await prisma.order.findMany({
+    const orders = (await prisma.order.findMany({
       where: { userId },
       orderBy: { placedAt: "desc" },
       include: {
@@ -51,7 +71,7 @@ router.get("/", requireUser, async (req, res, next) => {
           },
         },
       },
-    });
+    })) as any[];
 
     return res.json(
       orders.map((order) => ({
@@ -61,10 +81,16 @@ router.get("/", requireUser, async (req, res, next) => {
         total: order.total,
         placedAt: order.placedAt,
         paymentMethod: order.paymentMethod ?? undefined,
+        shippingFee: order.shippingFee,
         courierName: order.courierName ?? undefined,
         trackingNumber: order.trackingNumber ?? undefined,
         trackingUrl: order.trackingUrl ?? undefined,
-        items: order.items.map((item) => ({
+        deliveryAddress: order.deliveryAddress ?? undefined,
+        deliveryZoneId: order.deliveryZoneId ?? undefined,
+        deliveryZoneName: order.deliveryZoneName ?? undefined,
+        codAvailableAtOrderTime: order.codAvailableAtOrderTime ?? undefined,
+        estimatedDeliveryTimeAtOrderTime: order.estimatedDeliveryTimeAtOrderTime ?? undefined,
+        items: order.items.map((item: any) => ({
           id: item.id,
           productId: item.productId,
           variantId: item.variantId ?? undefined,
@@ -87,7 +113,7 @@ router.get("/:id", requireUser, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const isAdmin = req.user?.role === "admin";
-    const order = await prisma.order.findFirst({
+    const order = (await prisma.order.findFirst({
       where: isAdmin ? { id: req.params.id } : { id: req.params.id, userId },
       include: {
         items: {
@@ -105,7 +131,7 @@ router.get("/:id", requireUser, async (req, res, next) => {
           },
         },
       },
-    });
+    })) as any;
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -118,12 +144,18 @@ router.get("/:id", requireUser, async (req, res, next) => {
       subTotal: order.subTotal,
       discountTotal: order.discountTotal,
       total: order.total,
+      shippingFee: order.shippingFee,
       placedAt: order.placedAt,
       paymentMethod: order.paymentMethod ?? undefined,
+      deliveryAddress: order.deliveryAddress ?? undefined,
+      deliveryZoneId: order.deliveryZoneId ?? undefined,
+      deliveryZoneName: order.deliveryZoneName ?? undefined,
+      codAvailableAtOrderTime: order.codAvailableAtOrderTime ?? undefined,
+      estimatedDeliveryTimeAtOrderTime: order.estimatedDeliveryTimeAtOrderTime ?? undefined,
       courierName: order.courierName ?? undefined,
       trackingNumber: order.trackingNumber ?? undefined,
       trackingUrl: order.trackingUrl ?? undefined,
-      items: order.items.map((item) => ({
+      items: order.items.map((item: any) => ({
         id: item.id,
         productId: item.productId,
         variantId: item.variantId ?? undefined,
@@ -145,13 +177,13 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
   try {
     const userId = req.user?.id;
     const isAdmin = req.user?.role === "admin";
-    const order = await prisma.order.findFirst({
+    const order = (await prisma.order.findFirst({
       where: isAdmin ? { id: req.params.id } : { id: req.params.id, userId },
       include: {
         items: true,
         user: { select: { name: true, email: true } },
       },
-    });
+    })) as any;
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -173,12 +205,26 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
     doc.fontSize(10).text(`Invoice ID: ${order.id}`);
     doc.text(`Date: ${new Date(order.placedAt).toLocaleDateString()}`);
     doc.text(`Customer: ${order.user.name} (${order.user.email})`);
+    if (order.deliveryAddress && typeof order.deliveryAddress === "object") {
+      const address = order.deliveryAddress as Record<string, string | number | boolean | null>;
+      doc.text(
+        `Delivery: ${String(address.fullName ?? order.user.name)} - ${String(address.phone ?? "")}`,
+      );
+      doc.text(
+        `Address: ${String(
+          address.fullAddress ??
+            [address.houseNo, address.street, address.area, address.city, address.country]
+              .filter(Boolean)
+              .join(", "),
+        )}`,
+      );
+    }
     doc.moveDown();
 
     doc.fontSize(12).text("Items");
     doc.moveDown(0.5);
 
-    order.items.forEach((item) => {
+    order.items.forEach((item: any) => {
       const lineTotal = item.soldPrice * item.quantity;
       const metaParts = [item.color, item.sizeUS ? `US ${item.sizeUS}` : "", item.sizeEU ? `EU ${item.sizeEU}` : ""]
         .filter(Boolean)
@@ -193,6 +239,7 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
     doc.moveDown();
     doc.fontSize(10).text(`Subtotal: ${order.subTotal}`);
     doc.text(`Discount: ${order.discountTotal}`);
+    doc.text(`Shipping: ${order.shippingFee}`);
     doc.fontSize(12).text(`Total: ${order.total}`);
 
     doc.end();
@@ -336,18 +383,72 @@ router.post("/", requireUser, async (req, res, next) => {
       }
     }
 
-    const total = Math.max(subTotal - discountTotal, 0);
+    const candidateZones = (await (prisma as any).deliveryZone.findMany({
+      where: payload.shipping.city
+        ? {
+            isActive: true,
+            OR: [
+              { city: payload.shipping.city },
+              { city: { equals: payload.shipping.city, mode: "insensitive" } },
+            ],
+          }
+        : { isActive: true },
+      orderBy: [{ shippingFee: "asc" }, { createdAt: "asc" }],
+    })) as DeliveryZoneRecord[];
+
+    const deliveryZones =
+      candidateZones.length > 0
+        ? candidateZones
+        : ((await (prisma as any).deliveryZone.findMany({
+            where: { isActive: true },
+            orderBy: [{ shippingFee: "asc" }, { createdAt: "asc" }],
+          })) as DeliveryZoneRecord[]);
+
+    const matchedZone = findMatchingZone(deliveryZones, {
+      lat: payload.shipping.lat,
+      lng: payload.shipping.lng,
+    });
+
+    if (!matchedZone) {
+      return res.status(400).json({ message: "Delivery not available in this area." });
+    }
+
+    if (payload.paymentMethod === "cod" && !matchedZone.zone.codAvailable) {
+      return res.status(400).json({ message: "Cash on delivery is not available in this area." });
+    }
+
+    const shippingFee = matchedZone.zone.shippingFee;
+    const total = Math.max(subTotal - discountTotal, 0) + shippingFee;
+    const deliveryAddressSnapshot = {
+      ...payload.shipping,
+      estimatedDeliveryTime: matchedZone.zone.estimatedDeliveryTime,
+      shippingFee,
+      deliveryZoneId: matchedZone.zone.id,
+      deliveryZoneName: matchedZone.zone.name,
+      codAvailable: matchedZone.zone.codAvailable,
+    };
 
     const createdOrder = await prisma.$transaction(async (tx) => {
-      const created = await tx.order.create({
+      const created = await (tx as any).order.create({
         data: {
           userId,
           status: payload.paymentMethod === "dummy" ? "paid" : "processing",
           subTotal,
           discountTotal,
+          shippingFee,
           total,
           couponCode,
-          shipping: payload.shipping ?? undefined,
+          shipping: {
+            email: payload.shipping.email,
+            phone: payload.shipping.phone,
+            city: payload.shipping.city,
+            country: payload.shipping.country,
+          },
+          deliveryAddress: deliveryAddressSnapshot,
+          deliveryZoneId: matchedZone.zone.id,
+          deliveryZoneName: matchedZone.zone.name,
+          codAvailableAtOrderTime: matchedZone.zone.codAvailable,
+          estimatedDeliveryTimeAtOrderTime: matchedZone.zone.estimatedDeliveryTime,
           paymentMethod: payload.paymentMethod ?? undefined,
           items: {
             create: resolvedItems.map((item) => {
@@ -368,7 +469,7 @@ router.post("/", requireUser, async (req, res, next) => {
               };
             }),
           },
-        },
+        } as any,
         select: { id: true },
       });
 
@@ -407,7 +508,7 @@ router.post("/", requireUser, async (req, res, next) => {
       return created;
     });
 
-    const order = await prisma.order.findUnique({
+    const order = (await prisma.order.findUnique({
       where: { id: createdOrder.id },
       include: {
         items: {
@@ -425,7 +526,7 @@ router.post("/", requireUser, async (req, res, next) => {
           },
         },
       },
-    });
+    })) as any;
     if (!order) {
       return res.status(500).json({ message: "Order creation failed." });
     }
@@ -490,9 +591,15 @@ router.post("/", requireUser, async (req, res, next) => {
       subTotal: order.subTotal,
       discountTotal: order.discountTotal,
       total: order.total,
+      shippingFee: order.shippingFee,
       placedAt: order.placedAt,
       paymentMethod: order.paymentMethod ?? undefined,
-      items: order.items.map((item) => ({
+      deliveryAddress: order.deliveryAddress ?? undefined,
+      deliveryZoneId: order.deliveryZoneId ?? undefined,
+      deliveryZoneName: order.deliveryZoneName ?? undefined,
+      codAvailableAtOrderTime: order.codAvailableAtOrderTime ?? undefined,
+      estimatedDeliveryTimeAtOrderTime: order.estimatedDeliveryTimeAtOrderTime ?? undefined,
+      items: order.items.map((item: any) => ({
         id: item.id,
         productId: item.productId,
         variantId: item.variantId ?? undefined,

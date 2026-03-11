@@ -13,14 +13,17 @@
     "axios": "^1.13.2",
     "caniuse-lite": "^1.0.30001762",
     "framer-motion": "^12.24.7",
+    "leaflet": "^1.9.4",
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-leaflet": "^5.0.0",
     "react-redux": "^9.2.0",
     "recharts": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^20",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

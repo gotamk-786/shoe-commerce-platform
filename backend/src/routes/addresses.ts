@@ -8,13 +8,45 @@ const router = Router();
 
 const addressSchema = z.object({
   label: z.string().optional(),
+  fullName: z.string().min(1).optional(),
+  fullAddress: z.string().min(1).optional(),
+  houseNo: z.string().optional(),
   street: z.string().min(1),
+  landmark: z.string().optional(),
+  area: z.string().optional(),
   city: z.string().min(1),
-  state: z.string().min(1),
-  zip: z.string().min(1),
+  state: z.string().optional().default(""),
+  zip: z.string().optional().default(""),
+  postalCode: z.string().optional(),
   country: z.string().min(1),
   phone: z.string().min(6),
+  lat: z.number().optional(),
+  lng: z.number().optional(),
+  placeId: z.string().optional(),
+  deliveryNotes: z.string().optional(),
   isDefault: z.boolean().optional(),
+});
+
+const normalizeCreatePayload = (payload: z.infer<typeof addressSchema>) => ({
+  ...payload,
+  fullAddress:
+    payload.fullAddress ||
+    [payload.houseNo, payload.street, payload.area, payload.city, payload.state, payload.postalCode || payload.zip, payload.country]
+      .filter(Boolean)
+      .join(", "),
+  postalCode: payload.postalCode || payload.zip,
+  zip: payload.zip || payload.postalCode || "",
+  state: payload.state || "",
+});
+
+const normalizeUpdatePayload = (payload: Partial<z.infer<typeof addressSchema>>) => ({
+  ...payload,
+  ...(payload.postalCode !== undefined && payload.zip === undefined
+    ? { zip: payload.postalCode }
+    : {}),
+  ...(payload.zip !== undefined && payload.postalCode === undefined
+    ? { postalCode: payload.zip }
+    : {}),
 });
 
 router.get("/", requireUser, async (req, res, next) => {
@@ -31,7 +63,7 @@ router.get("/", requireUser, async (req, res, next) => {
 
 router.post("/", requireUser, async (req, res, next) => {
   try {
-    const payload = addressSchema.parse(req.body);
+    const payload = normalizeCreatePayload(addressSchema.parse(req.body));
     if (payload.isDefault) {
       await prisma.address.updateMany({
         where: { userId: req.user!.id },
@@ -57,7 +89,7 @@ router.post("/", requireUser, async (req, res, next) => {
 
 router.patch("/:id", requireUser, async (req, res, next) => {
   try {
-    const payload = addressSchema.partial().parse(req.body);
+    const payload = normalizeUpdatePayload(addressSchema.partial().parse(req.body));
     if (payload.isDefault) {
       await prisma.address.updateMany({
         where: { userId: req.user!.id },
@@ -74,6 +106,25 @@ router.patch("/:id", requireUser, async (req, res, next) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ message: "Invalid payload", issues: error.flatten() });
     }
+    return next(error);
+  }
+});
+
+router.post("/:id/default", requireUser, async (req, res, next) => {
+  try {
+    await prisma.address.updateMany({
+      where: { userId: req.user!.id },
+      data: { isDefault: false },
+    });
+
+    const address = await prisma.address.update({
+      where: { id: req.params.id },
+      data: { isDefault: true },
+    });
+
+    await logActivity(req.user!.id, "address", "Default address updated");
+    return res.json(address);
+  } catch (error) {
     return next(error);
   }
 });

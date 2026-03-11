@@ -23,6 +23,7 @@ import ticketsRouter from "./routes/tickets";
 import returnsRouter from "./routes/returns";
 import activityRouter from "./routes/activity";
 import twofactorRouter from "./routes/twofactor";
+import deliveryRouter from "./routes/delivery";
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use("/users/returns", returnsRouter);
 app.use("/users/activity", activityRouter);
 app.use("/users/2fa", twofactorRouter);
 app.use("/orders", ordersRouter);
+app.use("/delivery", deliveryRouter);
 app.use("/reviews", reviewsRouter);
 app.use("/wishlist", wishlistRouter);
 app.use("/coupons", couponsRouter);

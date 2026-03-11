@@ -11,6 +11,9 @@ import {
   UserProfile,
   AdminOrder,
   Address,
+  DeliveryAddressInput,
+  DeliveryZoneQuote,
+  GeocodedAddressSuggestion,
   PaymentMethod,
   NotificationPreference,
   MarketingSettings,
@@ -368,6 +371,41 @@ export const deleteAddress = async (id: string) => {
   await apiClient.delete(`/users/addresses/${id}`);
 };
 
+export const setDefaultAddress = async (id: string) => {
+  const { data } = await apiClient.post(`/users/addresses/${id}/default`);
+  return data;
+};
+
+export const autocompleteAddress = async (query: string): Promise<GeocodedAddressSuggestion[]> => {
+  const { data } = await apiClient.get("/delivery/autocomplete", {
+    params: { q: query },
+  });
+  return data?.data ?? data;
+};
+
+export const reverseGeocodeAddress = async (
+  lat: number,
+  lng: number,
+): Promise<GeocodedAddressSuggestion> => {
+  const { data } = await apiClient.get("/delivery/reverse-geocode", {
+    params: { lat, lng },
+  });
+  return data;
+};
+
+export const validateDeliveryZone = async (
+  lat: number,
+  lng: number,
+  city?: string,
+): Promise<DeliveryZoneQuote> => {
+  const { data } = await apiClient.post("/delivery/validate-zone", {
+    lat,
+    lng,
+    city,
+  });
+  return data;
+};
+
 export const fetchPaymentMethods = async (): Promise<PaymentMethod[]> => {
   const { data } = await apiClient.get("/users/payment-methods");
   return data?.data ?? data;
@@ -537,7 +575,7 @@ export const createOrder = async (payload: {
     image?: string;
     color?: string;
   }>;
-  shipping: Record<string, string>;
+  shipping: DeliveryAddressInput;
   paymentMethod: string;
   couponCode?: string;
 }): Promise<Order> => {

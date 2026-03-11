@@ -75,13 +75,74 @@ export type UserProfile = {
 export type Address = {
   id: string;
   label?: string;
+  fullName?: string;
+  fullAddress?: string;
+  houseNo?: string;
   street: string;
+  landmark?: string;
+  area?: string;
   city: string;
   state: string;
   zip: string;
+  postalCode?: string;
   country: string;
   phone: string;
+  lat?: number;
+  lng?: number;
+  placeId?: string;
+  deliveryNotes?: string;
   isDefault: boolean;
+};
+
+export type DeliveryAddressInput = {
+  addressId?: string;
+  label?: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  fullAddress: string;
+  houseNo?: string;
+  street: string;
+  landmark?: string;
+  area?: string;
+  city: string;
+  state?: string;
+  postalCode?: string;
+  country: string;
+  lat: number;
+  lng: number;
+  placeId?: string;
+  deliveryNotes?: string;
+};
+
+export type GeocodedAddressSuggestion = {
+  placeId: string;
+  fullAddress: string;
+  lat: number;
+  lng: number;
+  houseNo?: string;
+  street: string;
+  landmark?: string;
+  area?: string;
+  city: string;
+  state: string;
+  postalCode?: string;
+  country: string;
+};
+
+export type DeliveryZoneQuote = {
+  available: boolean;
+  message?: string;
+  zone?: {
+    id: string;
+    name: string;
+    city: string;
+    coverageType: "radius" | "polygon";
+    shippingFee: number;
+    estimatedDeliveryTime: string;
+    codAvailable: boolean;
+    distanceKm?: number;
+  };
 };
 
 export type PaymentMethod = {
@@ -117,9 +178,15 @@ export type Order = {
   status: "processing" | "paid" | "shipped" | "delivered" | "cancelled";
   subTotal?: number;
   discountTotal?: number;
+  shippingFee?: number;
   total: number;
   placedAt: string;
   paymentMethod?: string;
+  deliveryAddress?: DeliveryAddressInput;
+  deliveryZoneId?: string;
+  deliveryZoneName?: string;
+  codAvailableAtOrderTime?: boolean;
+  estimatedDeliveryTimeAtOrderTime?: string;
   courierName?: string;
   trackingNumber?: string;
   trackingUrl?: string;
