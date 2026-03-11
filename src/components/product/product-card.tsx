@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Product } from "@/lib/types";
 import { discountPrice, formatCurrency } from "@/lib/format";
-import Pill from "../ui/pill";
 import Button from "../ui/button";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCompare, removeFromCompare } from "@/store/slices/compare-slice";
@@ -70,14 +69,14 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
           <div className="absolute right-3 top-3 flex flex-col gap-2">
             {product.discount ? (
-              <Pill className="border border-rose-700/20 bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-white shadow-[0_14px_32px_rgba(225,29,72,0.34)]">
+              <span className="inline-flex items-center rounded-full border border-rose-700/20 bg-gradient-to-r from-rose-600 via-red-500 to-orange-500 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-white shadow-[0_14px_32px_rgba(225,29,72,0.34)]">
                 {product.discount}% off
-              </Pill>
+              </span>
             ) : null}
             {product.condition && (
-              <Pill className="border border-black/10 bg-white/95 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-gray-900 shadow-sm backdrop-blur">
+              <span className="inline-flex items-center rounded-full border border-black/10 bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-gray-900 shadow-sm backdrop-blur">
                 {product.condition}
-              </Pill>
+              </span>
             )}
           </div>
         </div>
