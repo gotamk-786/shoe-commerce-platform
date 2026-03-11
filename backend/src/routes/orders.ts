@@ -193,58 +193,152 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    if (!["paid", "shipped", "delivered"].includes(order.status)) {
+      return res.status(400).json({ message: "Invoice is available after payment is confirmed." });
+    }
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `inline; filename="invoice-${order.id}.pdf"`,
     );
 
-    const doc = new PDFDocument({ size: "A4", margin: 50 });
+    const doc = new PDFDocument({ size: "A4", margin: 36 });
     doc.pipe(res);
 
-    doc.fontSize(20).text("Thrifty Shoes", { align: "left" });
-    doc.fontSize(12).text("Invoice", { align: "right" });
-    doc.moveDown();
+    const address =
+      order.deliveryAddress && typeof order.deliveryAddress === "object"
+        ? (order.deliveryAddress as Record<string, string | number | boolean | null>)
+        : null;
+    const invoiceCode = buildOrderCode(order.id, order.placedAt);
+    const placedDate = new Date(order.placedAt).toLocaleDateString();
+    const customerName = String(address?.fullName ?? order.user.name);
+    const customerPhone = String(address?.phone ?? "");
+    const customerAddress = String(
+      address?.fullAddress ??
+        [address?.houseNo, address?.street, address?.area, address?.city, address?.country]
+          .filter(Boolean)
+          .join(", "),
+    );
 
-    doc.fontSize(10).text(`Invoice ID: ${order.id}`);
-    doc.text(`Date: ${new Date(order.placedAt).toLocaleDateString()}`);
-    doc.text(`Customer: ${order.user.name} (${order.user.email})`);
-    if (order.deliveryAddress && typeof order.deliveryAddress === "object") {
-      const address = order.deliveryAddress as Record<string, string | number | boolean | null>;
-      doc.text(
-        `Delivery: ${String(address.fullName ?? order.user.name)} - ${String(address.phone ?? "")}`,
-      );
-      doc.text(
-        `Address: ${String(
-          address.fullAddress ??
-            [address.houseNo, address.street, address.area, address.city, address.country]
-              .filter(Boolean)
-              .join(", "),
-        )}`,
-      );
-    }
-    doc.moveDown();
+    const money = (value: number) => `PKR ${value.toLocaleString()}`;
 
-    doc.fontSize(12).text("Items");
-    doc.moveDown(0.5);
+    doc
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .text("Thrifty Shoes", 36, 36);
+    doc
+      .fontSize(11)
+      .font("Helvetica")
+      .fillColor("#4b5563")
+      .text("Order invoice", 36, 64);
+    doc
+      .roundedRect(360, 36, 199, 78, 14)
+      .fillAndStroke("#f8fafc", "#d1d5db");
+    doc
+      .fillColor("#111827")
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .text(`Invoice ${invoiceCode}`, 376, 52)
+      .font("Helvetica")
+      .fontSize(10)
+      .text(`Date: ${placedDate}`, 376, 72)
+      .text(`Status: ${String(order.status).toUpperCase()}`, 376, 89);
 
-    order.items.forEach((item: any) => {
-      const lineTotal = item.soldPrice * item.quantity;
+    doc
+      .fillColor("#111827")
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("Customer", 36, 138)
+      .font("Helvetica")
+      .fontSize(10)
+      .text(customerName, 36, 158)
+      .text(order.user.email, 36, 174)
+      .text(customerPhone || "-", 36, 190)
+      .text(customerAddress || "-", 36, 206, { width: 250 });
+
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text("Payment", 330, 138)
+      .font("Helvetica")
+      .fontSize(10)
+      .text(`Method: ${order.paymentMethod ?? "manual"}`, 330, 158)
+      .text(`Subtotal: ${money(order.subTotal ?? 0)}`, 330, 174)
+      .text(`Discount: ${money(order.discountTotal ?? 0)}`, 330, 190)
+      .text(`Shipping: ${money(order.shippingFee ?? 0)}`, 330, 206)
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text(`Total: ${money(order.total ?? 0)}`, 330, 226);
+
+    const tableTop = 276;
+    doc
+      .roundedRect(36, tableTop, 523, 28, 10)
+      .fillAndStroke("#111827", "#111827");
+    doc
+      .fillColor("#ffffff")
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .text("Item", 50, tableTop + 9)
+      .text("Qty", 330, tableTop + 9)
+      .text("Price", 390, tableTop + 9)
+      .text("Total", 470, tableTop + 9);
+
+    let currentY = tableTop + 40;
+    order.items.forEach((item: any, index: number) => {
       const metaParts = [item.color, item.sizeUS ? `US ${item.sizeUS}` : "", item.sizeEU ? `EU ${item.sizeEU}` : ""]
         .filter(Boolean)
         .join(" / ");
+      const lineTotal = item.soldPrice * item.quantity;
+      const rowHeight = metaParts ? 38 : 26;
+      if (index % 2 === 0) {
+        doc.rect(36, currentY - 6, 523, rowHeight).fill("#f8fafc");
+      }
       doc
+        .fillColor("#111827")
+        .font("Helvetica-Bold")
         .fontSize(10)
-        .text(
-          `${item.name} x${item.quantity} ${metaParts ? `(${metaParts})` : ""} - ${lineTotal}`,
-        );
+        .text(item.name, 50, currentY, { width: 250 })
+        .font("Helvetica")
+        .fontSize(9);
+      if (metaParts) {
+        doc
+          .fillColor("#6b7280")
+          .text(metaParts, 50, currentY + 14, { width: 250 });
+      }
+      doc
+        .fillColor("#111827")
+        .fontSize(10)
+        .text(String(item.quantity), 330, currentY)
+        .text(money(item.soldPrice), 390, currentY)
+        .text(money(lineTotal), 470, currentY);
+      currentY += rowHeight;
     });
 
-    doc.moveDown();
-    doc.fontSize(10).text(`Subtotal: ${order.subTotal}`);
-    doc.text(`Discount: ${order.discountTotal}`);
-    doc.text(`Shipping: ${order.shippingFee}`);
-    doc.fontSize(12).text(`Total: ${order.total}`);
+    const summaryTop = currentY + 18;
+    doc
+      .roundedRect(330, summaryTop, 229, 82, 12)
+      .fillAndStroke("#f8fafc", "#e5e7eb");
+    doc
+      .fillColor("#111827")
+      .font("Helvetica")
+      .fontSize(10)
+      .text(`Subtotal`, 346, summaryTop + 16)
+      .text(money(order.subTotal ?? 0), 470, summaryTop + 16, { width: 70, align: "right" })
+      .text(`Discount`, 346, summaryTop + 34)
+      .text(money(order.discountTotal ?? 0), 470, summaryTop + 34, { width: 70, align: "right" })
+      .text(`Shipping`, 346, summaryTop + 52)
+      .text(money(order.shippingFee ?? 0), 470, summaryTop + 52, { width: 70, align: "right" })
+      .font("Helvetica-Bold")
+      .fontSize(12)
+      .text(`Grand Total`, 346, summaryTop + 72)
+      .text(money(order.total ?? 0), 454, summaryTop + 72, { width: 86, align: "right" });
+
+    doc
+      .fillColor("#6b7280")
+      .font("Helvetica")
+      .fontSize(9)
+      .text("Tracking details will appear after the order is marked as shipped.", 36, 770);
 
     doc.end();
   } catch (error) {
