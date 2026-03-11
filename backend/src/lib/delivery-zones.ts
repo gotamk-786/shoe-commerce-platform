@@ -20,7 +20,10 @@ const haversineKm = (from: Point, to: Point) => {
   return 2 * earthRadiusKm * Math.asin(Math.sqrt(a));
 };
 
-const normalizePolygon = (raw: unknown): Array<[number, number]> => {
+const normalizePolygon = (
+  raw: unknown,
+  format: "lng-lat" | "lat-lng" = "lng-lat",
+): Array<[number, number]> => {
   if (!Array.isArray(raw)) {
     return [];
   }
@@ -28,7 +31,11 @@ const normalizePolygon = (raw: unknown): Array<[number, number]> => {
   return raw
     .map((point) => {
       if (Array.isArray(point) && point.length >= 2) {
-        return [Number(point[0]), Number(point[1])] as [number, number];
+        const first = Number(point[0]);
+        const second = Number(point[1]);
+        return format === "lng-lat"
+          ? ([first, second] as [number, number])
+          : ([second, first] as [number, number]);
       }
 
       if (
@@ -96,6 +103,7 @@ export const findMatchingZone = (
   point: Point,
 ): DeliveryZoneMatch | null => {
   const activeZones = zones.filter((zone) => zone.isActive);
+  const radiusToleranceKm = 0.35;
 
   for (const zone of activeZones) {
     if (
@@ -109,14 +117,18 @@ export const findMatchingZone = (
         lng: zone.centerLng,
       });
 
-      if (distanceKm <= zone.radiusKm) {
+      if (distanceKm <= zone.radiusKm + radiusToleranceKm) {
         return { zone, distanceKm };
       }
     }
 
     if (zone.coverageType === "polygon") {
-      const polygon = normalizePolygon(zone.polygonJson);
-      if (isInsidePolygon(point, polygon)) {
+      const polygonLngLat = normalizePolygon(zone.polygonJson, "lng-lat");
+      const polygonLatLng = normalizePolygon(zone.polygonJson, "lat-lng");
+      if (
+        isInsidePolygon(point, polygonLngLat) ||
+        isInsidePolygon(point, polygonLatLng)
+      ) {
         return { zone };
       }
     }
