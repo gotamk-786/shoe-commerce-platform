@@ -15,10 +15,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    setMobileSidebarOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     if (mobileSidebarOpen) {
       document.body.style.overflow = "hidden";

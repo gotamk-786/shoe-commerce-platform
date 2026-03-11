@@ -3,8 +3,6 @@ type Point = {
   lng: number;
 };
 
-type PolygonPoint = [number, number] | { lat: number; lng: number };
-
 const toRadians = (value: number) => (value * Math.PI) / 180;
 
 const haversineKm = (from: Point, to: Point) => {

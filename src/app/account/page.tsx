@@ -84,10 +84,16 @@ export default function AccountPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [addressForm, setAddressForm] = useState<Omit<Address, "id">>({
     label: "",
+    fullName: "",
+    fullAddress: "",
+    houseNo: "",
     street: "",
+    landmark: "",
+    area: "",
     city: "",
     state: "",
     zip: "",
+    postalCode: "",
     country: "",
     phone: "",
     isDefault: false,
@@ -268,10 +274,16 @@ export default function AccountPage() {
   const resetAddressForm = () => {
     setAddressForm({
       label: "",
+      fullName: "",
+      fullAddress: "",
+      houseNo: "",
       street: "",
+      landmark: "",
+      area: "",
       city: "",
       state: "",
       zip: "",
+      postalCode: "",
       country: "",
       phone: "",
       isDefault: false,
@@ -740,10 +752,16 @@ export default function AccountPage() {
                       setEditingAddressId(address.id);
                       setAddressForm({
                         label: address.label,
+                        fullName: address.fullName,
+                        fullAddress: address.fullAddress,
+                        houseNo: address.houseNo,
                         street: address.street,
+                        landmark: address.landmark,
+                        area: address.area,
                         city: address.city,
                         state: address.state,
                         zip: address.zip,
+                        postalCode: address.postalCode,
                         country: address.country,
                         phone: address.phone,
                         isDefault: address.isDefault,
@@ -771,11 +789,38 @@ export default function AccountPage() {
                 onChange={(e) => setAddressForm((prev) => ({ ...prev, label: e.target.value }))}
               />
               <Input
+                label="Full name"
+                value={addressForm.fullName || ""}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, fullName: e.target.value }))}
+              />
+              <Input
+                label="Full address"
+                value={addressForm.fullAddress || ""}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, fullAddress: e.target.value }))}
+              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="House / Flat"
+                  value={addressForm.houseNo || ""}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, houseNo: e.target.value }))}
+                />
+                <Input
+                  label="Landmark"
+                  value={addressForm.landmark || ""}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, landmark: e.target.value }))}
+                />
+              </div>
+              <Input
                 label="Street"
                 value={addressForm.street}
                 onChange={(e) => setAddressForm((prev) => ({ ...prev, street: e.target.value }))}
               />
               <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Area"
+                  value={addressForm.area || ""}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, area: e.target.value }))}
+                />
                 <Input
                   label="City"
                   value={addressForm.city}
@@ -793,6 +838,13 @@ export default function AccountPage() {
                   value={addressForm.zip}
                   onChange={(e) => setAddressForm((prev) => ({ ...prev, zip: e.target.value }))}
                 />
+                <Input
+                  label="Postal code"
+                  value={addressForm.postalCode || ""}
+                  onChange={(e) => setAddressForm((prev) => ({ ...prev, postalCode: e.target.value }))}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Input
                   label="Country"
                   value={addressForm.country}

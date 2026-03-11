@@ -7,11 +7,6 @@ import { sendMail } from "../lib/mailer";
 import { sendSms } from "../lib/sms";
 import { logActivity } from "../lib/activity";
 import { buildOrderCode } from "../lib/order-code";
-import {
-  DeliveryZoneRecord,
-  findMatchingZone,
-  findNationwideZone,
-} from "../lib/delivery-zones";
 import PDFDocument from "pdfkit";
 
 const router = Router();
@@ -492,50 +487,11 @@ router.post("/", requireUser, async (req, res, next) => {
       }
     }
 
-    const candidateZones = (await (prisma as any).deliveryZone.findMany({
-      where: payload.shipping.city
-        ? {
-            isActive: true,
-            OR: [
-              { city: payload.shipping.city },
-              { city: { equals: payload.shipping.city, mode: "insensitive" } },
-            ],
-          }
-        : { isActive: true },
-      orderBy: [{ shippingFee: "asc" }, { createdAt: "asc" }],
-    })) as DeliveryZoneRecord[];
-
-    const deliveryZones =
-      candidateZones.length > 0
-        ? candidateZones
-        : ((await (prisma as any).deliveryZone.findMany({
-            where: { isActive: true },
-            orderBy: [{ shippingFee: "asc" }, { createdAt: "asc" }],
-          })) as DeliveryZoneRecord[]);
-
-    const matchedZone =
-      payload.shipping.lat !== undefined && payload.shipping.lng !== undefined
-        ? findMatchingZone(deliveryZones, {
-            lat: payload.shipping.lat,
-            lng: payload.shipping.lng,
-          })
-        : null;
-    const nationwideZone = matchedZone ? null : findNationwideZone(deliveryZones);
-    const resolvedZone = matchedZone?.zone ?? nationwideZone ?? deliveryZones[0] ?? null;
-
-    if (payload.paymentMethod === "cod" && resolvedZone && !resolvedZone.codAvailable) {
-      return res.status(400).json({ message: "Cash on delivery is not available in this area." });
-    }
-
-    const shippingFee = resolvedZone?.shippingFee ?? 0;
+    const shippingFee = 0;
     const total = Math.max(subTotal - discountTotal, 0) + shippingFee;
     const deliveryAddressSnapshot = {
       ...payload.shipping,
-      estimatedDeliveryTime: resolvedZone?.estimatedDeliveryTime,
       shippingFee,
-      deliveryZoneId: resolvedZone?.id,
-      deliveryZoneName: resolvedZone?.name,
-      codAvailable: resolvedZone?.codAvailable,
     };
 
     const createdOrder = await prisma.$transaction(async (tx) => {
@@ -555,10 +511,6 @@ router.post("/", requireUser, async (req, res, next) => {
             country: payload.shipping.country,
           },
           deliveryAddress: deliveryAddressSnapshot,
-          deliveryZoneId: resolvedZone?.id,
-          deliveryZoneName: resolvedZone?.name,
-          codAvailableAtOrderTime: resolvedZone?.codAvailable,
-          estimatedDeliveryTimeAtOrderTime: resolvedZone?.estimatedDeliveryTime,
           paymentMethod: payload.paymentMethod ?? undefined,
           items: {
             create: resolvedItems.map((item) => {

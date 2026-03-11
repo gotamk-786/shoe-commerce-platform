@@ -77,18 +77,11 @@ export default function Navbar() {
   );
 
   useEffect(() => {
-    if (!token) {
-      setWishlistCount(0);
-      return;
-    }
+    if (!token) return;
     fetchWishlist()
       .then((items) => setWishlistCount(items.length))
       .catch(() => setWishlistCount(0));
   }, [token]);
-
-  useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
