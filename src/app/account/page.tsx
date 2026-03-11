@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/button";
@@ -380,7 +381,7 @@ export default function AccountPage() {
           <div className="flex items-center gap-4">
             <div className="relative h-14 w-14 overflow-hidden rounded-full bg-black text-sm font-semibold text-white">
               {avatarUrl ? (
-                <img src={avatarUrl} alt={profile?.name} className="h-full w-full object-cover" />
+                <Image src={avatarUrl} alt={profile?.name || "Profile"} fill className="object-cover" unoptimized />
               ) : (
                 <div className="grid h-full w-full place-items-center">{initials}</div>
               )}
@@ -513,7 +514,7 @@ export default function AccountPage() {
                 <div className="relative">
                   <div className="relative h-20 w-20 overflow-hidden rounded-full bg-black text-sm font-semibold text-white">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt={profile?.name} className="h-full w-full object-cover" />
+                      <Image src={avatarUrl} alt={profile?.name || "Profile"} fill className="object-cover" unoptimized />
                     ) : (
                       <div className="grid h-full w-full place-items-center">{initials}</div>
                     )}
@@ -1124,10 +1125,12 @@ export default function AccountPage() {
                 >
                   <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-50">
                     {product.images?.[0]?.url ? (
-                      <img
+                      <Image
                         src={product.images[0].url}
                         alt={product.name}
-                        className="h-full w-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="grid h-full w-full place-items-center text-xs text-gray-400">

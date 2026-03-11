@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/button";
@@ -199,11 +200,13 @@ export default function MarketingShowcase({
               loop
             />
           ) : (
-            <img
+            <Image
               key={activeSlideMemo.mediaUrl}
               src={activeSlideMemo.mediaUrl}
               alt={activeSlideMemo.title}
-              className="h-full w-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
@@ -293,7 +296,9 @@ export default function MarketingShowcase({
                     loop
                   />
                 ) : (
-                  <img src={slide.mediaUrl} alt={slide.title} className="h-40 w-full object-cover" />
+                  <div className="relative h-40 w-full">
+                    <Image src={slide.mediaUrl} alt={slide.title} fill className="object-cover" unoptimized />
+                  </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
                 <div className="absolute bottom-4 left-4 text-left text-white">
@@ -323,7 +328,7 @@ export default function MarketingShowcase({
               href={tile.ctaHref || "/collection"}
               className={`group relative overflow-hidden rounded-3xl border border-black/5 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] ${layout}`}
             >
-              <img src={tile.imageUrl} alt={tile.title} className="h-full w-full object-cover" />
+              <Image src={tile.imageUrl} alt={tile.title} fill className="object-cover" unoptimized />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
               <div className="absolute inset-x-6 bottom-6 text-white">
                 {tile.tag && (
@@ -344,10 +349,12 @@ export default function MarketingShowcase({
 
       <div className="mx-auto grid max-w-6xl gap-8 px-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="relative overflow-hidden rounded-[32px] bg-[#0b1220] text-white shadow-[0_35px_80px_rgba(10,20,40,0.35)]">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1400&q=80"
             alt="Editorial highlight"
-            className="h-full w-full object-cover"
+            fill
+            className="object-cover"
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/20 to-transparent" />
           <div className="absolute inset-8 max-w-md space-y-4">
@@ -384,11 +391,9 @@ export default function MarketingShowcase({
                 key={look.id}
                 className="group flex items-center gap-4 rounded-3xl border border-black/10 bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.1)]"
               >
-                <img
-                  src={look.image}
-                  alt={look.title}
-                  className="h-20 w-20 rounded-2xl object-cover"
-                />
+                <div className="relative h-20 w-20 overflow-hidden rounded-2xl">
+                  <Image src={look.image} alt={look.title} fill className="object-cover" unoptimized />
+                </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">{look.title}</p>
                   <p className="text-xs text-gray-600">{look.caption}</p>

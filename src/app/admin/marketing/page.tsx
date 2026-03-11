@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import SectionHeading from "@/components/ui/section-heading";
 import Input from "@/components/ui/input";
@@ -317,7 +318,9 @@ export default function AdminMarketingPage() {
                         loop
                       />
                     ) : (
-                      <img src={slide.mediaUrl} alt={slide.title} className="h-48 w-full object-cover" />
+                      <div className="relative h-48 w-full">
+                        <Image src={slide.mediaUrl} alt={slide.title} fill className="object-cover" unoptimized />
+                      </div>
                     )}
                   </div>
                   <input
@@ -395,7 +398,9 @@ export default function AdminMarketingPage() {
                   />
                 </div>
                 <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                  <img src={tile.imageUrl} alt={tile.title} className="h-40 w-full object-cover" />
+                  <div className="relative h-40 w-full">
+                    <Image src={tile.imageUrl} alt={tile.title} fill className="object-cover" unoptimized />
+                  </div>
                 </div>
                 <input
                   type="file"

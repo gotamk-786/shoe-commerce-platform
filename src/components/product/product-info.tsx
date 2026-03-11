@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Button from "../ui/button";
@@ -113,10 +114,12 @@ export default function ProductInfo({
                 >
                   <span className="relative h-8 w-8 overflow-hidden rounded-xl border border-black/10 bg-white">
                     {variant.images?.[0]?.url ? (
-                      <img
+                      <Image
                         src={variant.images[0].url}
                         alt={variant.color}
-                        className="h-full w-full object-cover"
+                        fill
+                        className="object-cover"
+                        unoptimized
                       />
                     ) : null}
                   </span>
