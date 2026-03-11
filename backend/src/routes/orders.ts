@@ -206,16 +206,25 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
       order.deliveryAddress && typeof order.deliveryAddress === "object"
         ? (order.deliveryAddress as Record<string, string | number | boolean | null>)
         : null;
+    const shipping =
+      order.shipping && typeof order.shipping === "object"
+        ? (order.shipping as Record<string, string | number | boolean | null>)
+        : null;
+    const asText = (value: string | number | boolean | null | undefined) =>
+      value === null || value === undefined ? "" : String(value);
     const invoiceCode = buildOrderCode(order.id, order.placedAt);
     const placedDate = new Date(order.placedAt).toLocaleDateString();
-    const customerName = String(address?.fullName ?? order.user.name);
-    const customerPhone = String(address?.phone ?? "");
-    const customerAddress = String(
-      address?.fullAddress ??
-        [address?.houseNo, address?.street, address?.area, address?.city, address?.country]
-          .filter(Boolean)
-          .join(", "),
-    );
+    const customerName = asText(address?.fullName ?? shipping?.fullName ?? order.user.name);
+    const customerEmail = asText(address?.email ?? shipping?.email ?? order.user.email);
+    const customerPhone = asText(address?.phone ?? shipping?.phone ?? "");
+    const customerAddress = [
+      asText(address?.fullAddress),
+      [address?.houseNo, address?.street, address?.landmark, address?.area, address?.city, address?.state, address?.postalCode, address?.country]
+        .map(asText)
+        .filter(Boolean)
+        .join(", "),
+      [shipping?.fullAddress, shipping?.city, shipping?.country].map(asText).filter(Boolean).join(", "),
+    ].find((value) => String(value ?? "").trim().length > 0) || "";
 
     const money = (value: number) => `PKR ${value.toLocaleString()}`;
 
@@ -251,9 +260,13 @@ router.get("/:id/invoice", requireUser, async (req, res, next) => {
       .font("Helvetica")
       .fontSize(10)
       .text(customerName, 36, 158)
-      .text(order.user.email, 36, 174)
-      .text(customerPhone || "-", 36, 190)
-      .text(customerAddress || "-", 36, 206, { width: 250 });
+      .text(customerEmail, 36, 174);
+    if (customerPhone) {
+      doc.text(customerPhone, 36, 190);
+    }
+    if (customerAddress) {
+      doc.text(customerAddress, 36, customerPhone ? 206 : 190, { width: 250 });
+    }
 
     doc
       .font("Helvetica-Bold")
